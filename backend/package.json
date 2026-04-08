@@ -1,0 +1,35 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "cross-env NODE_ENV=production node src/server.js",
+    "dev": "cross-env NODE_ENV=development nodemon src/server.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prisma:generate": "node scripts/prisma-runner.js generate",
+    "prisma:migrate": "node scripts/prisma-runner.js migrate dev",
+    "prisma:migrate-create": "node scripts/prisma-runner.js migrate dev --create-only",
+    "prisma:studio": "node scripts/prisma-runner.js studio",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "body-parser": "^2.2.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "pg": "^8.20.0",
+    "prisma": "^6.19.3"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.6.2"
+  }
+}

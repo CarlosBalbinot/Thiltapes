@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  PLAYER
+}
+
+enum GameStatus {
+  ACTIVE
+  ENDED
+}
+
+model User {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username      String            @unique
+  password_hash  String
+  role          Role
+  created_at    DateTime          @default(now()) @db.Timestamptz(6)
+  games_admin   Game[]            @relation("GameAdmin")
+  inventories   PlayerInventory[] @relation("PlayerInventoryPlayer")
+
+  @@map("users")
+}
+
+model Game {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  admin_id   String   @db.Uuid
+  name       String
+  status     GameStatus @default(ACTIVE)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  admin      User     @relation("GameAdmin", fields: [admin_id], references: [id], onDelete: Restrict)
+  game_cards GameCard[]
+
+  @@map("games")
+}
+
+model Card {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  image_url   String
+  description String
+  game_cards  GameCard[]
+
+  @@map("cards")
+}
+
+model GameCard {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  game_id       String              @db.Uuid
+  card_id       String              @db.Uuid
+  location      Unsupported("geometry(Point, 4326)")
+  radius_meters Int                 @default(10)
+  created_at    DateTime            @default(now()) @db.Timestamptz(6)
+  game          Game                @relation(fields: [game_id], references: [id], onDelete: Cascade)
+  card          Card                @relation(fields: [card_id], references: [id], onDelete: Cascade)
+  inventories   PlayerInventory[]
+
+  @@map("game_cards")
+}
+
+model PlayerInventory {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  player_id    String   @db.Uuid
+  game_card_id String   @db.Uuid
+  found_at     DateTime @default(now()) @db.Timestamptz(6)
+  player       User     @relation("PlayerInventoryPlayer", fields: [player_id], references: [id], onDelete: Cascade)
+  game_card    GameCard @relation(fields: [game_card_id], references: [id], onDelete: Cascade)
+
+  @@unique([player_id, game_card_id])
+  @@map("player_inventories")
+}
