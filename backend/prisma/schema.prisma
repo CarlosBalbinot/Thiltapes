@@ -44,7 +44,7 @@ model Game {
 model GameCard {
   id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   game_id       String            @db.Uuid
-  thiltapesh_name          String
+  thiltapes_name          String
   image_url     String
   rarity        String            // Pode ser transformado em Enum se preferir
   location      Unsupported("geometry(Point, 4326)")
