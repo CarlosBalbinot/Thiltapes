@@ -12,6 +12,7 @@
     "prisma:migrate": "node scripts/prisma-runner.js migrate dev",
     "prisma:migrate-create": "node scripts/prisma-runner.js migrate dev --create-only",
     "prisma:studio": "node scripts/prisma-runner.js studio",
+    "prisma:reset": "node scripts/prisma-runner.js migrate reset --force",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -20,7 +20,7 @@ enum GameStatus {
 model User {
   id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username      String            @unique
-  password_hash  String
+  password_hash String
   role          Role
   created_at    DateTime          @default(now()) @db.Timestamptz(6)
   games_admin   Game[]            @relation("GameAdmin")
@@ -30,36 +30,27 @@ model User {
 }
 
 model Game {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  admin_id   String   @db.Uuid
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  admin_id   String     @db.Uuid
   name       String
   status     GameStatus @default(ACTIVE)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  admin      User     @relation("GameAdmin", fields: [admin_id], references: [id], onDelete: Restrict)
+  created_at DateTime   @default(now()) @db.Timestamptz(6)
+  admin      User       @relation("GameAdmin", fields: [admin_id], references: [id], onDelete: Restrict)
   game_cards GameCard[]
 
   @@map("games")
 }
 
-model Card {
-  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String
-  image_url   String
-  description String
-  game_cards  GameCard[]
-
-  @@map("cards")
-}
-
 model GameCard {
-  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  game_id       String              @db.Uuid
-  card_id       String              @db.Uuid
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  game_id       String            @db.Uuid
+  thiltapesh_name          String
+  image_url     String
+  rarity        String            // Pode ser transformado em Enum se preferir
   location      Unsupported("geometry(Point, 4326)")
-  radius_meters Int                 @default(10)
-  created_at    DateTime            @default(now()) @db.Timestamptz(6)
-  game          Game                @relation(fields: [game_id], references: [id], onDelete: Cascade)
-  card          Card                @relation(fields: [card_id], references: [id], onDelete: Cascade)
+  radius_meters Int               @default(10)
+  created_at    DateTime          @default(now()) @db.Timestamptz(6)
+  game          Game              @relation(fields: [game_id], references: [id], onDelete: Cascade)
   inventories   PlayerInventory[]
 
   @@map("game_cards")

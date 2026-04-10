@@ -52,7 +52,19 @@ JWT_EXPIRATION=7d
 npm run prisma:generate
 ```
 
-### 4. Executar Migrations
+### 4. Gerar o Migrate
+
+```
+npm run prisma:migrate-create
+```
+
+### 5 Adicionar essa linha em `/prisma/migrations/<migration_criada>/migration.sql`
+
+```
+CREATE EXTENSION IF NOT EXISTS postgis;
+```
+
+### 6. Executar Migrations
 
 ```bash
 npm run prisma:migrate
