@@ -20,7 +20,7 @@ npm install
 
 O projeto usa um sistema centralizado de variáveis de ambiente. Não edite URLs diretamente—use componentes separados para maior clareza.
 
-Crie em `backend/config/.env.development`:
+Crie em `backend/.env.development`:
 
 ```env
 NODE_ENV=development
