@@ -21,6 +21,7 @@
   "description": "",
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@tcgdex/sdk": "^2.7.1",
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
