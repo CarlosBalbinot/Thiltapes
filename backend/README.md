@@ -245,44 +245,45 @@ Server running on port 3000
 
 ```
 ┌──────────────────┐
-│     users        │
+│      users       │
 ├──────────────────┤
-│ id (UUID) [PK]   │
-│ email (unique)   │
-│ name             │
-│ role (ENUM)      │ ──┐
-│ created_at       │   │
-│ updated_at       │   │
-└──────────────────┘   │
-         └──────────────┼───────────┐
-                        │           │
-                        ▼           ▼
-          ┌──────────────────┐   ┌──────────────────────┐
-          │     games        │   │ player_inventories   │
-          ├──────────────────┤   ├──────────────────────┤
-          │ id (UUID) [PK]   │   │ id (UUID) [PK]       │
-          │ admin_id (FK)    │───│ player_id (FK)       │
-          │ name             │   │ game_card_id (FK)    │
-          │ status (ENUM)    │   │ collected_at         │
-          │ created_at       │   │ updated_at           │
-          │ updated_at       │   └──────────────────────┘
-          └──────────────────┘
-                    │
-                    ▼
-          ┌──────────────────────┐
-          │    game_cards        │
-          ├──────────────────────┤
-          │ id (UUID) [PK]       │
-          │ game_id (FK)         │
-          │ thiltapes_name       │
-          │ image_url            │
-          │ rarity               │
-          │ location (Point)     │ ◄─── PostGIS geometry
-          │ latitude             │
-          │ longitude            │
-          │ created_at           │
-          │ updated_at           │
-          └──────────────────────┘
+│ id (UUID) [PK]   │◄────────────────────────┐
+│ email (unique)   │                         │
+│ name             │                         │
+│ role (ENUM)      │ ──┐                     │
+│ created_at       │   │                     │
+│ updated_at       │   │                     │
+└──────────────────┘   │                     │
+         └─────────────┼───────────┐         │
+                       │           │         │
+                       ▼           ▼         │
+         ┌──────────────────┐  ┌──────────────────────┐
+         │      games       │  │ player_inventories   │
+         ├──────────────────┤  ├──────────────────────┤
+         │ id (UUID) [PK]   │  │ id (UUID) [PK]       │
+         │ admin_id (FK)    │──│ player_id (FK)       │
+         │ name             │  │ game_card_id (FK)    │
+         │ status (ENUM)    │  │ collected_at         │
+         │ created_at       │  │ updated_at           │
+         │ updated_at       │  └──────────────────────┘
+         └──────────────────┘
+                   │
+                   ▼
+         ┌──────────────────────┐
+         │     game_cards       │
+         ├──────────────────────┤
+         │ id (UUID) [PK]       │
+         │ game_id (FK)         │
+         │ collected_by (FK)    │────────────┘
+         │ thiltapes_name       │
+         │ image_url            │
+         │ rarity               │
+         │ location (Point)     │ ◄─── PostGIS geometry
+         │ latitude             │
+         │ longitude            │
+         │ created_at           │
+         │ updated_at           │
+         └──────────────────────┘
 ```
 
 ### Descrição das Tabelas

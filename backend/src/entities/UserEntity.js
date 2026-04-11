@@ -5,6 +5,9 @@ export const UserRole = {
   PLAYER: 'PLAYER',
 };
 
+/**
+ * Represents a user entity in the database.
+ */
 export class User extends BaseEntity {}
 
 export const UserEntity = new EntitySchema({
@@ -45,6 +48,11 @@ export const UserEntity = new EntitySchema({
       type: 'one-to-many',
       target: 'PlayerInventory',
       inverseSide: 'player',
+    },
+    collected_cards: {
+      type: 'one-to-many',
+      target: 'GameCard',
+      inverseSide: 'collected_by',
     },
   },
 });

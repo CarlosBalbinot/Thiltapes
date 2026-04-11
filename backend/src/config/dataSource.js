@@ -1,6 +1,9 @@
+/**
+ * TypeORM Data Source configuration.
+ * @type {import('typeorm').DataSource}
+ */
 import 'reflect-metadata';
 import './env.js';
-
 import { DataSource } from 'typeorm';
 
 import { UserEntity } from '../entities/UserEntity.js';
@@ -11,12 +14,12 @@ import { InitialSchema1712958000000 } from '../migrations/1712958000000-InitialS
 
 const enableLogging = process.env.NODE_ENV !== 'production';
 
-export const AppDataSource = new DataSource({
+const AppDataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
   logging: enableLogging ? ['error', 'warn'] : ['error'],
   entities: [UserEntity, GameEntity, GameCardEntity, PlayerInventoryEntity],
-  migrations: [InitialSchema1712958000000],
+  migrations: ['src/migrations/*.js'],
   synchronize: false,
 });
 

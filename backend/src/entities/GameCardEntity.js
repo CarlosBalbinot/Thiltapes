@@ -1,5 +1,8 @@
 import { BaseEntity, EntitySchema } from 'typeorm';
 
+/**
+ * Represents a game card entity in the database.
+ */
 export class GameCard extends BaseEntity {}
 
 export const GameCardEntity = new EntitySchema({
@@ -31,10 +34,6 @@ export const GameCardEntity = new EntitySchema({
       type: Number,
       default: 10,
     },
-    is_collected: {
-      type: Boolean,
-      default: false,
-    },
     created_at: {
       type: 'timestamptz',
       default: () => 'NOW()',
@@ -55,6 +54,16 @@ export const GameCardEntity = new EntitySchema({
       type: 'one-to-many',
       target: 'PlayerInventory',
       inverseSide: 'game_card',
+    },
+    collected_by: {
+      type: 'many-to-one',
+      target: 'User',
+      joinColumn: {
+        name: 'collected_by_id',
+      },
+      nullable: true,
+      onDelete: 'SET NULL',
+      inverseSide: 'collected_cards',
     },
   },
   indices: [
