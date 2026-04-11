@@ -1,7 +1,10 @@
 /**
  * Middleware de erro global
  * Centraliza o tratamento de erros da aplicação
+ * Utiliza padrão de resposta apiResponse para consistência
  */
+
+import { errorResponse, getErrorMessage } from '../utils/apiResponse.js';
 
 const errorHandler = (err, req, res, next) => {
   console.error('[ERROR]', {
@@ -13,14 +16,11 @@ const errorHandler = (err, req, res, next) => {
   });
 
   const statusCode = err.statusCode || 500;
-  const message = err.message || 'Erro interno do servidor';
+  const errorType = err.errorType || 'SERVER_ERROR';
+  const message = err.message || getErrorMessage(errorType);
+  const details = process.env.NODE_ENV === 'development' ? { stack: err.stack } : null;
 
-  res.status(statusCode).json({
-    status: 'error',
-    statusCode,
-    message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
+  res.status(statusCode).json(errorResponse(errorType, message, details));
 };
 
 export default errorHandler;

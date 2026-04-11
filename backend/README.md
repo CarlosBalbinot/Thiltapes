@@ -655,12 +655,323 @@ curl http://localhost:3000/health
 
 ---
 
+## � Gateway de Comunicação Front-Back
+
+Este projeto utiliza um **gateway robusto e escalável** que padroniza a comunicação entre o Backend (Node.js) e o Frontend (Android).
+
+### Arquitetura
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Android App (Java)                     │
+│  ├─ Retrofit HTTP Client                               │
+│  ├─ ApiClient (singleton instance)                     │
+│  ├─ ApiService (interface com endpoints)               │
+│  └─ AppConfig (URLs dev/prod automáticas)              │
+└────────────────┬────────────────────────────────────────┘
+                 │
+                 │ REST API (JSON over HTTP/HTTPS)
+                 │
+┌────────────────▼────────────────────────────────────────┐
+│                Backend API (Node.js)                    │
+│  ├─ Routes (src/routes/) - endpoints organizados        │
+│  ├─ Utils (apiResponse.js) - padrão de resposta         │
+│  ├─ Middlewares - logger, error handler                │
+│  └─ Entities (TypeORM) - modelos de dados              │
+└────────────────┬────────────────────────────────────────┘
+                 │
+                 │ TypeORM + SQL
+                 │
+┌────────────────▼────────────────────────────────────────┐
+│         PostgreSQL + PostGIS (Database)                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Padrão de Resposta
+
+**Sucesso (HTTP 200-201):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-123",
+    "name": "Exemplo",
+    ...
+  },
+  "message": "Operação realizada com sucesso",
+  "timestamp": "2026-04-11T16:15:30.123Z"
+}
+```
+
+**Erro (HTTP 400, 401, 404, 500):**
+
+```json
+{
+  "success": false,
+  "error": "VALIDATION_ERROR|AUTH_ERROR|NOT_FOUND|SERVER_ERROR",
+  "message": "Descrição legível do erro",
+  "details": { ... },
+  "timestamp": "2026-04-11T16:15:30.123Z"
+}
+```
+
+### Como criar uma nova rota
+
+#### Backend: Criar arquivo de rota
+
+Crie `src/routes/games.js`:
+
+```javascript
+import { Router } from 'express';
+import { successResponse } from '../utils/apiResponse.js';
+
+const router = Router();
+
+/**
+ * GET /api/games
+ * Retorna lista de todos os jogos
+ */
+router.get('/', async (req, res) => {
+  try {
+    // Sua lógica com TypeORM
+    const games = []; // await AppDataSource.getRepository(GameEntity).find();
+
+    res.status(200).json(successResponse(games, 'Games listados com sucesso'));
+  } catch (error) {
+    res.status(500).json(errorResponse('SERVER_ERROR', error.message));
+  }
+});
+
+/**
+ * GET /api/games/:gameId
+ * Retorna um jogo específico
+ */
+router.get('/:gameId', async (req, res) => {
+  const { gameId } = req.params;
+
+  // Sua implementação aqui
+  res.status(200).json(successResponse({ id: gameId }, 'Game encontrado'));
+});
+
+/**
+ * POST /api/games
+ * Cria novo jogo
+ */
+router.post('/', async (req, res) => {
+  const { name, adminId } = req.body;
+
+  // Sua implementação aqui
+  res.status(201).json(successResponse({ id: 'new-uuid', name, adminId }, 'Game criado'));
+});
+
+export default router;
+```
+
+#### Backend: Registrar rota no router principal
+
+Edite `src/routes/index.js`:
+
+```javascript
+import { Router } from 'express';
+import healthRouter from './health.js';
+import gamesRouter from './games.js'; // ← Adicionar import
+
+const router = Router();
+
+router.use('/', healthRouter);
+router.use('/games', gamesRouter); // ← Adicionar mount
+
+export default router;
+```
+
+**Resultado:** Sua rota estará disponível em `/api/games`
+
+---
+
+#### Frontend Android: Adicionar método em ApiService
+
+Edite `app/src/main/java/com/example/frontend/api/ApiService.java`:
+
+```java
+public interface ApiService {
+    @GET("health")
+    Call<ApiResponse> healthCheck();
+
+    // ===== GAMES =====
+
+    @GET("games")
+    Call<ApiResponse> getGames();
+
+    @GET("games/{gameId}")
+    Call<ApiResponse> getGame(@Path("gameId") String gameId);
+
+    @POST("games")
+    Call<ApiResponse> createGame(@Body GameRequest request);
+
+    // Adicione mais conforme necessário...
+}
+```
+
+#### Frontend Android: Usar em Activity/Fragment
+
+```java
+import com.example.frontend.api.ApiClient;
+
+public class GamesActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // Obter games
+        ApiClient.getApiService().getGames().enqueue(
+            new Callback<ApiResponse>() {
+                @Override
+                public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        ApiResponse apiResponse = response.body();
+
+                        if (apiResponse.isSuccess()) {
+                            // Processar dados
+                            Object games = apiResponse.getData();
+                            // Usar 'games' na UI
+                        } else {
+                            // Mostrar erro
+                            String error = apiResponse.getError();
+                            showErrorDialog(error, apiResponse.getMessage());
+                        }
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<ApiResponse> call, Throwable t) {
+                    showErrorDialog("Conexão", "Falha ao conectar: " + t.getMessage());
+                }
+            }
+        );
+    }
+}
+```
+
+### Padrão de uso de erro
+
+No **Backend**, você pode lançar erros customizados:
+
+```javascript
+import { errorResponse } from '../utils/apiResponse.js';
+
+// Validação
+if (!name) {
+  return res.status(400).json(errorResponse('VALIDATION_ERROR', 'Nome é obrigatório'));
+}
+
+// Auth
+if (!user) {
+  return res.status(401).json(errorResponse('UNAUTHORIZED', 'Token inválido'));
+}
+
+// Não encontrado
+if (!game) {
+  return res.status(404).json(errorResponse('NOT_FOUND', 'Game não encontrado'));
+}
+```
+
+### Adicionar autenticação JWT (futuro)
+
+**Backend:**
+
+```javascript
+// src/middlewares/authMiddleware.js
+export const requireAuth = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json(errorResponse('UNAUTHORIZED', 'Token não fornecido'));
+  }
+
+  // Validar token aqui
+  // Se válido: req.user = decoded; next();
+};
+
+// Usar em rotas:
+router.get('/me', requireAuth, (req, res) => {
+  // req.user está disponível aqui
+});
+```
+
+**Android:**
+
+```java
+// Em ApiInterceptor.java (já tem placeholder)
+String token = TokenManager.getInstance().getToken();
+if (token != null && !token.isEmpty()) {
+    requestBuilder.header("Authorization", "Bearer " + token);
+}
+```
+
+### Configuração de ambientes (Dev vs Produção)
+
+**Backend:**
+
+- Dev: `npm run dev` - listening on port 3000
+- Prod: `npm start` - NODE_ENV=production
+
+**Android:**
+
+```java
+// AppConfig.java
+public static final String API_BASE_URL = BuildConfig.DEBUG
+    ? "http://10.0.2.2:3000/api"        // Desenvolvimento (emulador)
+    : "https://api.thiltapes.com/api";  // Produção
+```
+
+Deploy em produção:
+
+- Altere URL em `AppConfig.java`
+- Backend em servidor remoto com HTTPS/SSL
+- Nenhuma outra mudança necessária!
+
+### Status da Aplicação (Home Screen)
+
+A página inicial do app (`MainActivity.java`) mostra:
+
+- ✅ **Status visual** - Indicador colorido (verde/vermelho/laranja)
+- ✅ **URL da API** - Mostra qual endpoint está configurado
+- ✅ **Ambiente** - Development ou Release
+- ✅ **Resposta completa** - Mostra JSON detalhado da API
+
+Este é o **canário da aplicação** - se a home conecta, o resto provavelmente funciona.
+
+---
+
+## 🚀 Expandindo o Gateway
+
+### Checklist: Adicionar novo endpoint
+
+1. **Backend:**
+   - [ ] Criar `src/routes/recurso.js`
+   - [ ] Implementar rotas (GET, POST, PUT, DELETE)
+   - [ ] Importar e registrar em `src/routes/index.js`
+   - [ ] Testar com curl: `curl http://localhost:3000/api/recurso`
+
+2. **Android:**
+   - [ ] Adicionar método em `ApiService.java`
+   - [ ] Usar em Activity com `ApiClient.getApiService().metodo()`
+   - [ ] Implementar `Callback<ApiResponse>` para processar resposta
+
+3. **Tipo de dados:**
+   - [ ] Se precisa modelo Java, criar classe em `models/` (futuro)
+   - [ ] Backend retorna sempre padrão `ApiResponse`
+
+---
+
 ## 📝 Próximos Passos
 
-1. **Implementar endpoints REST** (`src/routes/`) - Games, Cards, Inventory
-2. **Adicionar autenticação JWT** - Middleware para proteger rotas
-3. **Testes** - Unit/integration tests com Jest
-4. **Integração Frontend** - Conectar Android app aos endpoints
+1. ✅ **Gateway base criado** - Ambos os lados comunicando
+2. ⏳ **Seu time expande rotas** - Games, Cards, Inventory
+3. ⏳ **Adicionar JWT** - Autenticação (sem refação)
+4. ⏳ **Geolocalização** - LocationListener no Android
+5. ⏳ **Deploy** - Trocar URLs + vendor em servidor
 
 ---
 

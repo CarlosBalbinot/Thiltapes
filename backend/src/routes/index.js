@@ -1,13 +1,15 @@
-import express from 'express';
-const router = express.Router();
+/**
+ * Router principal da API
+ * Monta todos os routers de recursos específicos
+ * Padrão: /api/<recurso>/<ação>
+ */
 
-// Test route
-router.get('/test', (req, res) => {
-  res.status(200).json({
-    status: 'success',
-    message: 'API está funcionando corretamente',
-    timestamp: new Date().toISOString(),
-  });
-});
+import { Router } from 'express';
+import healthRouter from './health.js';
+
+const router = Router();
+
+// Montar routers
+router.use('/', healthRouter);
 
 export default router;
