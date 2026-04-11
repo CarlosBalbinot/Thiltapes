@@ -28,6 +28,3 @@ logs/
 dist/
 build/
 
-# Prisma
-prisma/migrations/
-.prisma/

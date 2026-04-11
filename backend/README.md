@@ -1,332 +1,721 @@
 # Thiltapes - Backend API
 
-Backend da aplicação Thiltapes construída com Node.js, Express, Prisma e PostgreSQL com suporte a geolocalização via PostGIS.
+Backend da aplicação Thiltapes construído com **Node.js 18+**, **Express 5.x**, **TypeORM 0.3.27** e **PostgreSQL 14+** com suporte a **PostGIS**.
+
+---
+
+## 🔄 Migração de Prisma para TypeORM
+
+### O que foi alterado?
+
+**Antes (Prisma):**
+
+- ORM: Prisma Client
+- Scheama: `prisma/schema.prisma`
+- Migrações: Geradas automaticamente em `prisma/migrations/`
+- Queries: `$executeRaw()`, `$queryRaw()`
+
+**Depois (TypeORM):**
+
+- ORM: **TypeORM 0.3.27** com padrão Active Record
+- Entidades: Definidas em `src/entities/` usando `EntitySchema` (sem decoradores)
+- Migrações: Manuais em `src/migrations/` (mais controle, seguro idempotente)
+- Queries: `AppDataSource.query()` para raw SQL, repositórios tipados para operações ORM
+
+### Arquivos removidos:
+
+- ❌ `prisma/schema.prisma`
+- ❌ `prisma/migrations/`
+- ❌ `src/config/prisma.js`
+- ❌ `scripts/prisma-runner.js`
+
+### Arquivos criados/modificados:
+
+- ✅ `src/config/dataSource.js` (novo)
+- ✅ `src/entities/UserEntity.js` (novo)
+- ✅ `src/entities/GameEntity.js` (novo)
+- ✅ `src/entities/GameCardEntity.js` (novo)
+- ✅ `src/entities/PlayerInventoryEntity.js` (novo)
+- ✅ `src/migrations/1712958000000-InitialSchema.js` (novo)
+- ✅ `scripts/typeorm-migrate.js` (novo)
+- ✅ `scripts/typeorm-migrate-revert.js` (novo)
+- ✅ `scripts/typeorm-reset.js` (novo)
+- ✅ `src/server.js` (modificado - lifecycle TypeORM)
+- ✅ `src/utils/postgisQueries.js` (adaptado para TypeORM)
+- ✅ `package.json` (dependências atualizadas)
+
+---
 
 ## 📋 Pré-requisitos
 
-- **Node.js** v18 ou superior
-- **PostgreSQL** 14+ com extensão **PostGIS** instalada
-- **npm** ou **yarn** para gerenciar dependências
+- **Node.js 18+** (recomendado 18.17.0 ou superior)
+- **PostgreSQL 14+** (com extensões `pgcrypto` e `postgis`)
+- **npm** (ou yarn/pnpm)
+- Editor de código (VS Code, WebStorm, etc) - opcional
 
-## 🚀 Configuração Inicial
-
-### 1. Instalar Dependências
+### Verificar instalações
 
 ```bash
+node --version      # v18.17.0+
+npm --version       # 9.6.0+
+psql --version      # PostgreSQL 14+
+```
+
+---
+
+## 🚀 Configuração Local - Passo a Passo
+
+### 1️⃣ Clonar repositório e instalar dependências
+
+```bash
+cd c:\univates\Thiltapes\backend
 npm install
 ```
 
-### 2. Configurar Variáveis de Ambiente
+**O que acontece:**
 
-O projeto usa um sistema centralizado de variáveis de ambiente. Não edite URLs diretamente—use componentes separados para maior clareza.
+- Baixa todas as dependências incluindo `typeorm`, `express`, `reflect-metadata`
+- Cria `node_modules/`
+- Verifica 0 vulnerabilidades de segurança
 
-Crie em `backend/.env.development`:
+Expected output:
+
+```
+added 203 packages, audited 204 packages in 39s
+61 packages are looking for funding
+found 0 vulnerabilities
+```
+
+---
+
+### 2️⃣ Configurar variáveis de ambiente
+
+Crie o arquivo `config/.env.development`:
+
+```bash
+# Usar WSL ou Git Bash no Windows
+touch config/.env.development
+# Ou criar manualmente em: backend\config\.env.development
+```
+
+**Conteúdo do arquivo:**
 
 ```env
+# Aplicação
 NODE_ENV=development
 PORT=3000
 
-# Database Connection - Componentes separados
+# Banco de dados (credenciais PostgreSQL locais)
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_NAME=thiltapes_db
 
-# Database Admin (para criar o banco se necessário)
+# Credenciais admin para criar banco se não existir
 DB_ADMIN_HOST=localhost
 DB_ADMIN_PORT=5432
 DB_ADMIN_USER=postgres
 DB_ADMIN_PASSWORD=postgres
 
+# CORS (frontend)
 CORS_ORIGIN=http://localhost:3000,http://localhost:8080
-JWT_SECRET=change_this_development_secret
+
+# JWT (segurança)
+JWT_SECRET=change_this_development_secret_use_strong_key
 JWT_EXPIRATION=7d
+
+# TypeORM logging (opcional)
+TYPEORM_LOGGING=false   # true para ver todas as queries SQL
 ```
 
-**⚠️ Importante**: Não compartilhe `.env.development` e `.env.production` em repositórios. Eles estão no `.gitignore`.
+**🔐 Observação de segurança:**
 
-### 3. Gerar Prisma Client
+- Nunca comitar `.env.development` com dados sensíveis
+- Em produção, use variáveis de ambiente do servidor
+- Para JWT_SECRET em produção, use uma chave forte (uuid, hash)
+
+---
+
+### 3️⃣ Preparar o Banco de Dados PostgreSQL
+
+#### Opção A: Usar pgAdmin (UI - mais simples)
+
+1. Abra pgAdmin no navegador: `http://localhost:5050`
+2. Conecte com credenciais PostgreSQL
+3. Não precisa criar nada manual - o script faz isso
+
+#### Opção B: Usar psql (CLI)
 
 ```bash
-npm run prisma:generate
+psql -U postgres -h localhost -p 5432
+
+# Dentro do psql:
+CREATE DATABASE thiltapes_db;
+\c thiltapes_db
+CREATE EXTENSION pgcrypto;
+CREATE EXTENSION postgis;
+\q
 ```
 
-### 4. Gerar o Migrate
+#### Opção C: Deixar o script fazer (recomendado ✅)
 
-```
-npm run prisma:migrate-create
-```
+O script `scripts/ensure-database.js` cria tudo automaticamente quando executar as migrations. Apenas certifique-se que:
 
-### 5 Adicionar essa linha em `/prisma/migrations/<migration_criada>/migration.sql`
+- PostgreSQL está rodando
+- Credenciais em `.env.development` estão corretas
+- Usuário `postgres` tem permissão de criar databases
 
-```
-CREATE EXTENSION IF NOT EXISTS postgis;
-```
+---
 
-### 6. Executar Migrations
+### 4️⃣ Executar migrations (criar tabelas)
+
+Este é o comando **MAIS IMPORTANTE**:
 
 ```bash
-npm run prisma:migrate
+npm run typeorm:migrate
 ```
 
-Este comando:
+**O que este comando faz (Step-by-step):**
 
-- ✅ Cria automaticamente o banco de dados (usando `DB_ADMIN_*`)
-- ✅ Aplica todas as migrations pendentes
-- ✅ Cria extensões PostgreSQL (`pgcrypto`, `postgis`)
-- ✅ Cria todas as tabelas do schema
+1. ✅ Carrega variáveis de `config/.env.development`
+2. ✅ Conecta com PostgreSQL usando credenciais admin
+3. ✅ Cria banco de dados `thiltapes_db` se não existir
+4. ✅ Conecta ao banco criado
+5. ✅ Cria extensão `pgcrypto` (para UUIDs com `gen_random_uuid()`)
+6. ✅ Cria extensão `postgis` (para geometria de pontos)
+7. ✅ Cria tipos ENUM (role_enum: ADMIN/PLAYER, game_status_enum: ACTIVE/ENDED)
+8. ✅ Cria todas as tabelas:
+   - `users` - usuários do sistema
+   - `games` - instâncias de jogos
+   - `game_cards` - cards posicionados no mapa
+   - `player_inventories` - cards coletados pelos jogadores
+9. ✅ Cria índices (incluindo índice GIST para PostGIS)
+10. ✅ Registra migration como "aplicada" no `_prisma_migrations`
 
-### 5. Iniciar o Servidor
+**Expected output:**
 
-**Desenvolvimento** (com hot-reload):
+```
+◇ injected env (9) from config\.env.development
+Banco "thiltapes_db" criado com sucesso.
+Migrations TypeORM aplicadas com sucesso.
+```
+
+Ou se banco já existe:
+
+```
+◇ injected env (9) from config\.env.development
+Banco "thiltapes_db" já existe.
+Migrations TypeORM aplicadas com sucesso.
+```
+
+---
+
+### 5️⃣ Iniciar o servidor
 
 ```bash
 npm run dev
 ```
 
-**Produção**:
+**O que acontece:**
 
-```bash
-npm start
+1. Carrega variáveis de ambiente
+2. Inicializa TypeORM DataSource (conecta ao banco)
+3. Inicia Express server na porta 3000
+4. Ativa nodemon para reload automático em mudanças de código
+
+**Expected output:**
+
+```
+> backend@1.0.0 dev
+> nodemon --exec node --experimental-modules src/server.js
+
+[nodemon] 3.0.1
+[nodemon] to restart at any time, type `rs`
+[nodemon] watching path(s): src/**
+[nodemon] watching extensions: js,json
+Server running on port 3000
 ```
 
 ---
 
-## 📦 Scripts do package.json
+## 📊 Estrutura do Banco de Dados
 
-| Comando                         | O que faz                                                |
-| ------------------------------- | -------------------------------------------------------- |
-| `npm start`                     | Inicia em **produção** (`NODE_ENV=production`)           |
-| `npm run dev`                   | Inicia em **desenvolvimento** com hot-reload (`nodemon`) |
-| `npm run format`                | Formata **todo** o código com Prettier                   |
-| `npm run format:check`          | Verifica formatação sem alterar nada                     |
-| `npm run prisma:generate`       | Gera o Prisma Client                                     |
-| `npm run prisma:migrate`        | Cria banco automaticamente e executa migrations          |
-| `npm run prisma:migrate-create` | Cria nova migration **sem aplicar** (para revisar SQL)   |
-| `npm run prisma:studio`         | Abre GUI visual para gerenciar dados do banco            |
+### Diagrama de Tabelas
 
----
-
-## 🎨 Formatação de Código com Prettier
-
-O projeto usa **Prettier** para manter o código padronizado e consistente.
-
-### Como Funciona
-
-- Prettier formata automaticamente ao salvar (ativado em `.vscode/settings.json`)
-- Estilo definido em `.prettierrc`:
-  - 100 caracteres por linha
-  - Semicolon no final
-  - Aspas simples `'` em strings
-  - Trailing comma em objetos/arrays
-
-### Usar Prettier
-
-**Formatar tudo**:
-
-```bash
-npm run format
+```
+┌──────────────────┐
+│     users        │
+├──────────────────┤
+│ id (UUID) [PK]   │
+│ email (unique)   │
+│ name             │
+│ role (ENUM)      │ ──┐
+│ created_at       │   │
+│ updated_at       │   │
+└──────────────────┘   │
+         └──────────────┼───────────┐
+                        │           │
+                        ▼           ▼
+          ┌──────────────────┐   ┌──────────────────────┐
+          │     games        │   │ player_inventories   │
+          ├──────────────────┤   ├──────────────────────┤
+          │ id (UUID) [PK]   │   │ id (UUID) [PK]       │
+          │ admin_id (FK)    │───│ player_id (FK)       │
+          │ name             │   │ game_card_id (FK)    │
+          │ status (ENUM)    │   │ collected_at         │
+          │ created_at       │   │ updated_at           │
+          │ updated_at       │   └──────────────────────┘
+          └──────────────────┘
+                    │
+                    ▼
+          ┌──────────────────────┐
+          │    game_cards        │
+          ├──────────────────────┤
+          │ id (UUID) [PK]       │
+          │ game_id (FK)         │
+          │ thiltapes_name       │
+          │ image_url            │
+          │ rarity               │
+          │ location (Point)     │ ◄─── PostGIS geometry
+          │ latitude             │
+          │ longitude            │
+          │ created_at           │
+          │ updated_at           │
+          └──────────────────────┘
 ```
 
-**Verificar sem alterar**:
+### Descrição das Tabelas
 
-```bash
-npm run format:check
-```
-
-**Arquivos ignorados**:
-
-- `node_modules/`, `prisma/migrations/`, `.prisma/`
-
----
-
-## 🗄️ Variáveis de Ambiente
-
-### Sistema Estruturado (Sem URLs Confusas)
-
-Ao invés de `postgresql://user:pass@host:port/db`, use componentes:
-
-```env
-DB_HOST=localhost           # Host do PostgreSQL
-DB_PORT=5432                # Porta
-DB_USER=app_user            # Usuário da aplicação
-DB_PASSWORD=senha_da_app    # Senha da aplicação
-DB_NAME=thiltapes_db        # Nome do banco
-```
-
-O arquivo `src/config/env.js` **monta automaticamente** as URLs:
-
-- `DATABASE_URL = postgresql://app_user:senha@localhost:5432/thiltapes_db`
-- `DATABASE_ADMIN_URL = postgresql://postgres:senha@localhost:5432/postgres`
-
-### Fluxo de Carregamento
-
-1. `src/config/env.js` é carregado
-2. Lê `NODE_ENV` (development ou production)
-3. Carrega `config/.env.development` ou `config/.env.production`
-4. Monta `DATABASE_URL` e `DATABASE_ADMIN_URL` automaticamente
-5. Todos os módulos acessam via `process.env.DATABASE_URL`
-
----
-
-## 🌍 PostGIS - Sistema Geoespacial
-
-O projeto usa **PostGIS** para armazenar e consultar coordenadas geográficas.
-
-### Por Que PostGIS?
-
-A tabela `game_cards` armazena `location` como `geometry(Point, 4326)`:
-
-- **4326** = sistema de coordenadas WGS84 (GPS padrão)
-- PostGIS permite consultas como: "encontre todos os pontos dentro de 100 metros"
-
-### Instalação no Windows
-
-1. Abra **StackBuilder** (vem com PostgreSQL):
-   - Path: `C:\Program Files\PostgreSQL\16\bin\stackbuilder.exe`
-
-2. Selecione sua instalação PostgreSQL
-
-3. Vá para **Spatial Extensions → PostGIS**
-
-4. Instale a versão compatível
-
-5. Teste a migration:
-
-```bash
-npm run prisma:migrate
-```
-
-### Se der Erro
-
-Execute manualmente no banco:
+#### **users** - Usuários do sistema
 
 ```sql
-CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  role role_enum NOT NULL DEFAULT 'PLAYER',  -- ADMIN, PLAYER
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-### Consultas Geoespaciais
+**Campos:**
 
-Use helpers em `src/utils/postgisQueries.js`:
+- `id`: Identificador único (UUID)
+- `email`: Email do usuário (único)
+- `name`: Nome do usuário
+- `role`: ADMIN (gerencia jogos) ou PLAYER (coleta cards)
+- `created_at`: Timestamp de criação
+- `updated_at`: Timestamp de última alteração
+
+---
+
+#### **games** - Instâncias de jogos
+
+```sql
+CREATE TABLE games (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id UUID NOT NULL REFERENCES users(id),
+  name VARCHAR(255) NOT NULL,
+  status game_status_enum NOT NULL DEFAULT 'ACTIVE',  -- ACTIVE, ENDED
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Campos:**
+
+- `id`: Identificador único do jogo
+- `admin_id`: FK para usuário que criou o jogo (ADMIN)
+- `name`: Nome do jogo
+- `status`: ACTIVE (jogando) ou ENDED (finalizado)
+- `created_at`, `updated_at`: Timestamps
+
+---
+
+#### **game_cards** - Cards posicionados no mapa (com PostGIS)
+
+```sql
+CREATE TABLE game_cards (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  thiltapes_name VARCHAR(255) NOT NULL,
+  image_url TEXT,
+  rarity VARCHAR(50),
+  location geometry(Point, 4326) NOT NULL,  -- ◄─── PostGIS!
+  latitude NUMERIC(10, 8),
+  longitude NUMERIC(11, 8),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índice GIST para queries de proximidade PostGIS
+CREATE INDEX idx_game_cards_location ON game_cards USING GIST (location);
+```
+
+**Campos:**
+
+- `id`: Identificador único do card
+- `game_id`: FK para o jogo (CASCADE delete se jogo deletado)
+- `thiltapes_name`: Nome do card
+- `image_url`: URL da imagem do card
+- `rarity`: Raridade (comum, rara, épica, lendária, etc)
+- `location`: **Geometria PostGIS ponto (WGS84/4326)**
+- `latitude`, `longitude`: Campos duplicados para facilitar queries
+- `created_at`, `updated_at`: Timestamps
+
+**Exemplo Insert com PostGIS:**
 
 ```javascript
-import { insertGameCardOnMap } from './src/utils/postgisQueries.js';
+const result = await AppDataSource.query(
+  `
+  INSERT INTO game_cards 
+  (id, game_id, thiltapes_name, image_url, rarity, location, latitude, longitude)
+  VALUES 
+  ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9)
+  RETURNING *;
+`,
+  [id, gameId, name, imageUrl, rarity, lng, lat, lat, lng]
+);
+```
 
-// Inserir carta no mapa
-await insertGameCardOnMap({
-  gameId: '123e4567-e89b-12d3-a456-426614174000',
-  cardId: '987fcdeb-51a2-11ec-81d3-0242ac120002',
-  lat: -29.1676,
-  lng: -51.1799,
-  radius: 20, // metros
-});
+**Query de proximidade:**
 
-// Buscar cartas próximas
-import { findCardsWithinPlayerRadius } from './src/utils/postgisQueries.js';
-
-const nearby = await findCardsWithinPlayerRadius({
-  gameId: '123e4567-e89b-12d3-a456-426614174000',
-  lat: -29.1676,
-  lng: -51.1799,
-});
+```javascript
+// Encontrar cards dentro de 1km do jogador
+const cards = await AppDataSource.query(
+  `
+  SELECT id, thiltapes_name, image_url, rarity,
+         ST_X(location) as lng, 
+         ST_Y(location) as lat
+  FROM game_cards
+  WHERE game_id = $1
+    AND ST_DWithin(location, ST_SetSRID(ST_MakePoint($2, $3), 4326), 1000)
+  ORDER BY ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $3), 4326));
+`,
+  [gameId, playerLng, playerLat]
+);
 ```
 
 ---
 
-## 🏗️ Estrutura do Projeto
+#### **player_inventories** - Cards coletados (Join table)
+
+```sql
+CREATE TABLE player_inventories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  player_id UUID NOT NULL REFERENCES users(id),
+  game_card_id UUID NOT NULL REFERENCES game_cards(id),
+  collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(player_id, game_card_id)  -- Uma vez por jogador/card
+);
+```
+
+**Campos:**
+
+- `id`: Identificador único
+- `player_id`: FK para usuário que coletou
+- `game_card_id`: FK para card coletado
+- `collected_at`: Quando foi coletado
+- `UNIQUE(player_id, game_card_id)`: Garante que cada jogador coleta cada card só 1x
+
+---
+
+## 📁 Estrutura de Arquivos
 
 ```
 backend/
 ├── config/
-│   ├── .env.development          # ⚠️ Não versionar (credenciais)
-│   ├── .env.development.example  # ✅ Template versionado
-│   ├── .env.production           # ⚠️ Não versionar
-│   └── .env.production.example   # ✅ Template versionado
+│   └── .env.development           # Variáveis de ambiente (NÃO comitar!)
+│
 ├── scripts/
-│   ├── prisma-runner.js          # Injeta env antes de rodar Prisma
-│   └── ensure-database.js        # Cria banco automaticamente
-├── prisma/
-│   ├── schema.prisma             # Definição de modelos
-│   ├── migrations/               # Histórico de mudanças
-│   └── migration_lock.toml       # Lock Prisma (não edite)
+│   ├── ensure-database.js         # Cria banco se não existir
+│   ├── typeorm-migrate.js         # Carrega migrations (MAIN)
+│   ├── typeorm-migrate-revert.js  # Reverte última migration
+│   ├── prisma-runner.js           # [DELETADO]
+│   └── typeorm-reset.js           # Deleta tudo e reaplica
+│
 ├── src/
 │   ├── config/
-│   │   ├── env.js                # Loader de variáveis
-│   │   └── prisma.js             # Instância do PrismaClient
-│   ├── middlewares/
-│   │   ├── errorHandler.js       # Tratamento de erros
-│   │   └── requestLogger.js      # Logger de requisições
+│   │   ├── env.js                 # Composição de variáveis (DATABASE_URL)
+│   │   ├── dataSource.js          # Configuração TypeORM ⭐
+│   │   └── prisma.js              # [DELETADO]
+│   │
+│   ├── entities/                  # Definição de modelos (Schemas)
+│   │   ├── UserEntity.js          # Usuários (ADMIN/PLAYER)
+│   │   ├── GameEntity.js          # Jogos (ACTIVE/ENDED)
+│   │   ├── GameCardEntity.js      # Cards com geometry ponto
+│   │   └── PlayerInventoryEntity.js # Join table (Many-to-Many)
+│   │
+│   ├── migrations/
+│   │   └── 1712958000000-InitialSchema.js # Criação inicial + idempotência
+│   │
 │   ├── routes/
-│   │   └── index.js              # Rotas da API
+│   │   └── index.js               # [A IMPLEMENTAR] Endpoints API
+│   │
+│   ├── middlewares/
+│   │   ├── errorHandler.js
+│   │   └── requestLogger.js
+│   │
 │   ├── utils/
-│   │   └── postgisQueries.js     # Helpers geoespaciais
-│   ├── app.js                    # Configuração Express
-│   └── server.js                 # Entrada
-├── .prettierrc                   # Config Prettier
-├── .gitignore                    # Não versionar
-├── package.json                  # Dependências
-└── README.md                     # Este arquivo
+│   │   ├── postgisQueries.js      # Helpers PostGIS ✅ (atualizado)
+│   │   └── generateCard.js        # Card generation
+│   │
+│   ├── app.js                     # Configuração Express
+│   ├── server.js                  # Entry point + TypeORM init ✅
+│   └── prisma/                    # [DELETADO]
+│
+├── package.json                   # ✅ Atualizado (Prisma → TypeORM)
+├── package-lock.json
+├── .gitignore                     # ✅ Atualizado (removidas referências Prisma)
+├── .prettierignore                # ✅ Atualizado
+└── README.md                      # Este arquivo
 ```
 
 ---
 
-## 🔗 Endpoints
+## 🧩 Entidades TypeORM (Padrão Active Record)
 
-- **GET** `/health` - Saúde do servidor
-- **GET** `/api/test` - API de teste
+### UserEntity.js
+
+```javascript
+export const UserEntity = new EntitySchema({
+  name: 'User',
+  tableName: 'users',
+  columns: {
+    id: { type: 'uuid', primary: true, generated: 'uuid', default: 'gen_random_uuid()' },
+    email: { type: 'varchar', unique: true },
+    name: { type: 'varchar' },
+    role: { type: 'enum', enum: ['ADMIN', 'PLAYER'], default: 'PLAYER' },
+    createdAt: { name: 'created_at', type: 'timestamp', createDate: true },
+    updatedAt: { name: 'updated_at', type: 'timestamp', updateDate: true },
+  },
+  relations: {
+    games: { type: 'one-to-many', target: 'Game', inverseSide: 'admin' },
+    inventories: { type: 'one-to-many', target: 'PlayerInventory', inverseSide: 'player' },
+  },
+});
+```
+
+### GameEntity.js
+
+```javascript
+export const GameEntity = new EntitySchema({
+  name: 'Game',
+  tableName: 'games',
+  columns: {
+    id: { type: 'uuid', primary: true, generated: 'uuid', default: 'gen_random_uuid()' },
+    adminId: { name: 'admin_id', type: 'uuid' },
+    name: { type: 'varchar' },
+    status: { type: 'enum', enum: ['ACTIVE', 'ENDED'], default: 'ACTIVE' },
+    createdAt: { name: 'created_at', type: 'timestamp', createDate: true },
+    updatedAt: { name: 'updated_at', type: 'timestamp', updateDate: true },
+  },
+  relations: {
+    admin: { type: 'many-to-one', target: 'User', joinColumn: { name: 'admin_id' } },
+    gameCards: { type: 'one-to-many', target: 'GameCard', inverseSide: 'game' },
+  },
+});
+```
+
+### GameCardEntity.js (com PostGIS)
+
+```javascript
+export const GameCardEntity = new EntitySchema({
+  name: 'GameCard',
+  tableName: 'game_cards',
+  columns: {
+    id: { type: 'uuid', primary: true, generated: 'uuid', default: 'gen_random_uuid()' },
+    gameId: { name: 'game_id', type: 'uuid' },
+    thiltapesName: { name: 'thiltapes_name', type: 'varchar' },
+    imageUrl: { name: 'image_url', type: 'text' },
+    rarity: { type: 'varchar' },
+    location: { type: 'geometry', spatialFeatureType: 'Point', srid: 4326 },
+    latitude: { type: 'numeric', precision: 10, scale: 8 },
+    longitude: { type: 'numeric', precision: 11, scale: 8 },
+    createdAt: { name: 'created_at', type: 'timestamp', createDate: true },
+    updatedAt: { name: 'updated_at', type: 'timestamp', updateDate: true },
+  },
+  indices: [{ spatial: true, columns: ['location'] }],
+  relations: {
+    game: { type: 'many-to-one', target: 'Game', joinColumn: { name: 'game_id' } },
+    inventories: { type: 'one-to-many', target: 'PlayerInventory', inverseSide: 'gameCard' },
+  },
+});
+```
+
+### PlayerInventoryEntity.js
+
+```javascript
+export const PlayerInventoryEntity = new EntitySchema({
+  name: 'PlayerInventory',
+  tableName: 'player_inventories',
+  columns: {
+    id: { type: 'uuid', primary: true, generated: 'uuid', default: 'gen_random_uuid()' },
+    playerId: { name: 'player_id', type: 'uuid' },
+    gameCardId: { name: 'game_card_id', type: 'uuid' },
+    collectedAt: { name: 'collected_at', type: 'timestamp', createDate: true },
+    updatedAt: { name: 'updated_at', type: 'timestamp', updateDate: true },
+  },
+  uniques: [{ columns: ['playerId', 'gameCardId'] }],
+  relations: {
+    player: { type: 'many-to-one', target: 'User', joinColumn: { name: 'player_id' } },
+    gameCard: { type: 'many-to-one', target: 'GameCard', joinColumn: { name: 'game_card_id' } },
+  },
+});
+```
+
+---
+
+## 🔧 Scripts Disponíveis
+
+| Comando                          | O que faz                       | Quando usar                             |
+| -------------------------------- | ------------------------------- | --------------------------------------- |
+| `npm install`                    | Instala dependências            | Inicial ou após mudança em package.json |
+| **`npm run typeorm:migrate`**    | **Cria banco e tabelas (MAIN)** | **Primeiro setup e ambiente novo**      |
+| `npm run typeorm:migrate-revert` | Desfaz última migration         | Caso de erro na migration anterior      |
+| `npm run typeorm:reset`          | Deleta DB e reaplica tudo       | Reset completo (dados perdidos!)        |
+| `npm run db:ensure`              | Apenas garante banco existe     | Raro (chamado por typeorm-migrate)      |
+| `npm run dev`                    | Inicia servidor com nodemon     | Desenvolvimento                         |
+| `npm start`                      | Inicia servidor (produção)      | Produção                                |
+| `npm run format`                 | Formata código com Prettier     | Antes de commitar                       |
+| `npm run format:check`           | Valida formatação               | CI/CD                                   |
+
+---
+
+## 🌍 PostGIS - Consultas Geoespaciais
+
+### Insert com geometria de ponto
+
+```javascript
+const result = await AppDataSource.query(
+  `INSERT INTO game_cards 
+   (id, game_id, thiltapes_name, image_url, rarity, location, latitude, longitude)
+   VALUES 
+   ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9)
+   RETURNING *;`,
+  [uuidv4(), gameId, name, imageUrl, rarity, lng, lat, lat, lng]
+);
+```
+
+### Query por proximidade (ex: cards dentro de 1km)
+
+```javascript
+const nearbyCards = await AppDataSource.query(
+  `SELECT id, thiltapes_name, image_url, rarity,
+          ST_X(location) as lng, 
+          ST_Y(location) as lat,
+          ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $3), 4326)) as distance_m
+   FROM game_cards
+   WHERE game_id = $1
+     AND ST_DWithin(location, ST_SetSRID(ST_MakePoint($2, $3), 4326), 1000)
+   ORDER BY distance_m;`,
+  [gameId, playerLng, playerLat]
+);
+```
+
+### Funções PostGIS principais
+
+- `ST_MakePoint(lng, lat)` - Cria ponto 2D
+- `ST_SetSRID(point, 4326)` - Define projeção WGS84 (coordenadas do GPS)
+- `ST_DWithin(point1, point2, meters)` - Distância euclidiana (rápido)
+- `ST_Distance(point1, point2)` - Distância real entre pontos
+- `ST_X(point)`, `ST_Y(point)` - Extrai lng/lat
+- `ST_AsText(geometry)` - Converte para WKT format
+
+---
+
+## ✅ Checklist de Setup Completo
+
+- [ ] Node.js 18+ instalado (`node --version`)
+- [ ] PostgreSQL 14+ rodando (`psql --version`)
+- [ ] Dependências instaladas (`npm install`)
+- [ ] `.env.development` criado com credenciais corretas
+- [ ] Database criado (`npm run typeorm:migrate`)
+- [ ] Zero erros no comando anterior
+- [ ] Servidor rodando (`npm run dev`)
+- [ ] Porta 3000 acessível
+
+---
+
+## 🧪 Teste Rápido
+
+```bash
+# Terminal 1: Iniciar servidor
+npm run dev
+
+# Terminal 2: Testar via curl
+curl http://localhost:3000/health
+
+# Esperado:
+# {"status": "ok"}
+```
+
+---
+
+## 📝 Próximos Passos
+
+1. **Implementar endpoints REST** (`src/routes/`) - Games, Cards, Inventory
+2. **Adicionar autenticação JWT** - Middleware para proteger rotas
+3. **Testes** - Unit/integration tests com Jest
+4. **Integração Frontend** - Conectar Android app aos endpoints
 
 ---
 
 ## 🐛 Troubleshooting
 
-### "autenticação do tipo senha falhou"
+### Erro: "Banco de dados já existe com diferenças de schema"
 
-Verifique em `config/.env.development`:
+```bash
+# Solução 1: Resetar banco (⚠️ CAUSA PERDA DE DADOS)
+npm run typeorm:reset
 
-- `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` estão corretos?
-- O PostgreSQL está rodando?
+# Solução 2: Inspecionar migrations aplicadas
+npm run typeorm:migrate --show-migrations
+```
 
-### "extensão postgis não está disponível"
+### Erro de conexão PostgreSQL
 
-Instale PostGIS via StackBuilder (ver seção 🌍 PostGIS acima)
+- Verificar se PostgreSQL está rodando
+- Verificar credenciais em `.env.development`
+- Verificar se firewall permite porta 5432
 
-### Código não formatado
+### Erro: "module not found 'reflect-metadata'"
 
-Rode: `npm run format`
+```bash
+npm install reflect-metadata
+```
 
-### Erro na migration "p3006"
+### Indices PostGIS não criados
 
-Verifique:
-
-1. PostGIS está instalado?
-2. PostgreSQL está rodando?
-3. Credenciais em `.env.development` estão corretas?
-
----
-
-## 📚 Documentação
-
-- [Express.js](https://expressjs.com) - Framework Web
-- [Prisma ORM](https://www.prisma.io/docs/) - ORM do Banco
-- [PostgreSQL](https://www.postgresql.org/docs/) - Banco de Dados
-- [PostGIS](https://postgis.net/documentation/) - Geoespacial
+```bash
+# Reconectar ao banco e validar
+psql -U postgres -d thiltapes_db -c "\d+ game_cards"
+# Procurar por: idx_game_cards_location
+```
 
 ---
 
-## 🔐 Segurança
+## 📚 Dependências principais
 
-- ✅ CORS configurável por ambiente
-- ✅ Body parser limitado
-- ✅ Tratamento de erros
-- ✅ Variáveis sensíveis não versionadas (`.gitignore`)
-- 🔲 Validação de entrada (a fazer)
-- 🔲 Autenticação JWT (a fazer)
-- 🔲 Rate limiting (a fazer)
+```json
+{
+  "express": "^5.0.0",
+  "typeorm": "^0.3.27",
+  "reflect-metadata": "^0.2.2",
+  "pg": "^8.12.0",
+  "nodemon": "^3.0.1",
+  "dotenv": "^16.4.5"
+}
+```
 
 ---
 
-## 📄 Licença
+## 📖 Links úteis
 
-ISC
+- [TypeORM Docs](https://typeorm.io/)
+- [PostGIS Manual](https://postgis.net/documentation/)
+- [Express Docs](https://expressjs.com/)
+- [PostgreSQL Docs](https://www.postgresql.org/docs/)
