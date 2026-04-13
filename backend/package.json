@@ -9,6 +9,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:ensure": "node scripts/ensure-database.js",
+    "typeorm:migration-create": "node scripts/typeorm-migration-create.js",
     "typeorm:migrate": "node scripts/typeorm-migrate.js",
     "typeorm:migrate-revert": "node scripts/typeorm-migrate-revert.js",
     "typeorm:reset": "node scripts/typeorm-reset.js",

@@ -13,6 +13,11 @@ export const PlayerInventoryEntity = new EntitySchema({
       generated: 'uuid',
       default: () => 'gen_random_uuid()',
     },
+    found_location: {
+      type: 'geometry',
+      spatialFeatureType: 'Point',
+      srid: 4326,
+    },
     found_at: {
       type: 'timestamptz',
       default: () => 'NOW()',
