@@ -1,10 +1,5 @@
-/**
- * Rota de Health Check
- * Endpoint para verificar se a API está online e operacional
- */
-
 import { Router } from 'express';
-import { successResponse } from '../utils/apiResponse.js';
+import { successResponse } from '../../utils/apiResponse.js';
 
 const router = Router();
 
@@ -13,7 +8,7 @@ const router = Router();
  * Verifica se a API está saudável
  * Sem autenticação necessária
  */
-router.get('/health', (req, res) => {
+router.get('/', (req, res) => {
   res.status(200).json(
     successResponse(
       {
@@ -28,4 +23,4 @@ router.get('/health', (req, res) => {
   );
 });
 
-export default router;
+export { router };
