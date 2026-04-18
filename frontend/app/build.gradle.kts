@@ -20,6 +20,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "environment"
+
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            buildConfigField("String", "API_BASE_URL", "\"http://127.0.0.1:3000/api/\"")
+            manifestPlaceholders["usesCleartextTraffic"] = true
+        }
+
+        create("prod") {
+            dimension = "environment"
+            buildConfigField("String", "API_BASE_URL", "\"https://thiltapes-prod.trycloudflare.com/api/\"")
+            manifestPlaceholders["usesCleartextTraffic"] = false
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

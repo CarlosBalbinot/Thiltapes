@@ -10,12 +10,9 @@ import com.example.frontend.BuildConfig;
 public class AppConfig {
     /**
      * URL base da API
-     * Dev: Emulador Android conecta ao PC via 10.0.2.2:3000
-     * Prod: URL https final (seu time atualizar depois)
+     * Configurada por build type no Gradle
      */
-    public static final String API_BASE_URL = BuildConfig.DEBUG
-        ? "http://10.0.2.2:3000/api/"        // Desenvolvimento (emulador)
-        : "https://api.thiltapes.com/api/";  // Produção (seu time atualizar)
+    public static final String API_BASE_URL = BuildConfig.API_BASE_URL;
 
     /**
      * Timeout das requisições em segundos

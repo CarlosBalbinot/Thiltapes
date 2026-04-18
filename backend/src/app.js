@@ -9,12 +9,21 @@ import requestLogger from './middlewares/requestLogger.js';
 
 const app = express();
 
+const corsOrigins = process.env.CORS_ORIGIN?.split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 // Middlewares
 app.use(requestLogger);
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN?.split(',') || '*',
+    origin:
+      corsOrigins?.length > 0
+        ? corsOrigins
+        : process.env.NODE_ENV === 'development'
+          ? ['http://localhost:3000', 'http://localhost:8080']
+          : false,
     credentials: true,
   })
 );

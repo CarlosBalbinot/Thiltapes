@@ -920,17 +920,17 @@ if (token != null && !token.isEmpty()) {
 **Android:**
 
 ```java
-// AppConfig.java
-public static final String API_BASE_URL = BuildConfig.DEBUG
-    ? "http://10.0.2.2:3000/api"        // Desenvolvimento (emulador)
-    : "https://api.thiltapes.com/api";  // Produção
+// Configuração por flavor em frontend/app/build.gradle.kts
+public static final String API_BASE_URL = BuildConfig.API_BASE_URL;
 ```
 
 Deploy em produção:
 
-- Altere URL em `AppConfig.java`
+- Use o flavor `prod` para gerar o APK de produção
+- Use o flavor `dev` para gerar o APK de teste
 - Backend em servidor remoto com HTTPS/SSL
-- Nenhuma outra mudança necessária!
+- Use `backend/config/.env.production.example` como base do ambiente de produção
+- Produção usa o IP `177.44.248.28` diretamente na URL HTTPS
 
 ### Status da Aplicação (Home Screen)
 
