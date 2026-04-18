@@ -53,10 +53,10 @@ public interface ApiService {
     // ============================================================
     // AUTHENTICATION
     // ============================================================
-    @POST("auth/login")
+    @POST("user/login")
     Call<ApiResponse> login(@Body Map<String, Object> data);
 
-    @POST("auth/register")
+    @POST("user/create")
     Call<ApiResponse> register(@Body Map<String, Object> data);
 
     // ============================================================

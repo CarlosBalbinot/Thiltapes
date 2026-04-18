@@ -26,6 +26,8 @@ public class RegisterActivity extends AppCompatActivity {
         MaterialButton btnRegister = findViewById(R.id.btnRegister);
         MaterialButton btnBackToLogin = findViewById(R.id.btnBackToLogin);
 
+        TokenManager.init(this);
+
         btnRegister.setOnClickListener(v -> register());
         btnBackToLogin.setOnClickListener(v -> finish());
     }
@@ -44,23 +46,28 @@ public class RegisterActivity extends AppCompatActivity {
         data.put("username", user);
         data.put("email", mail);
         data.put("password", pass);
+        data.put("role", "PLAYER"); // O backend exige que passe a ROLE (Ex: PLAYER, ADMIN)
 
         ApiClient.getApiService().register(data).enqueue(new Callback<ApiResponse>() {
             @Override
             public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     if (response.body().isSuccess()) {
-                        Toast.makeText(RegisterActivity.this, "Conta criada! Faça login.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(RegisterActivity.this, "Usuário criado com sucesso!", Toast.LENGTH_SHORT).show();
+                        
+                        // Após criar conta, devolve pra tela de login
                         finish();
                     } else {
-                        Toast.makeText(RegisterActivity.this, response.body().getMessage(), Toast.LENGTH_LONG).show();
+                        Toast.makeText(RegisterActivity.this, "Falha ao criar: " + response.body().getMessage(), Toast.LENGTH_LONG).show();
                     }
+                } else {
+                    Toast.makeText(RegisterActivity.this, "Erro na resposta do servidor.", Toast.LENGTH_LONG).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse> call, Throwable t) {
-                Toast.makeText(RegisterActivity.this, "Erro: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(RegisterActivity.this, "Erro de rede: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }

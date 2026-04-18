@@ -28,8 +28,16 @@ public class LoginActivity extends AppCompatActivity {
         username = findViewById(R.id.username);
         password = findViewById(R.id.password);
         MaterialButton btnLogin = findViewById(R.id.btnLogin);
+        MaterialButton btnGoToRegister = findViewById(R.id.btnGoToRegister);
+
+        // Inicia a lib de criptografia JWT
+        TokenManager.init(this);
 
         btnLogin.setOnClickListener(v -> login());
+
+        btnGoToRegister.setOnClickListener(v -> {
+            startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
+        });
     }
 
     private void login() {
@@ -42,29 +50,32 @@ public class LoginActivity extends AppCompatActivity {
             public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
                 if(response.isSuccessful() && response.body() != null){
                     if(response.body().isSuccess()){
-                        String userId = String.valueOf(response.body().getData());
+                        String userId = response.body().getUserId(); // O backend agora manda user_id no root object como String (UUID)
+                        String token = response.body().getToken(); // Pegamos o jwt
 
-                        getSharedPreferences("APP", MODE_PRIVATE)
-                                .edit()
-                                .putString("USER_ID", userId)
-                                .apply();
+                        // Salvar de forma criptografada
+                        TokenManager.getInstance().saveToken(token);
+                        TokenManager.getInstance().saveUserId(userId);
 
                         Toast.makeText(LoginActivity.this,
-                                "Login OK", Toast.LENGTH_SHORT).show();
+                                "Login efetuado com sucesso!", Toast.LENGTH_SHORT).show();
 
                         startActivity(new Intent(LoginActivity.this, MainActivity.class));
                         finish(); // Fecha a tela de login para não voltar nela ao apertar "voltar"
                     } else {
                         Toast.makeText(LoginActivity.this,
-                                response.body().getMessage(), Toast.LENGTH_LONG).show();
+                                "Falha no login: " + response.body().getMessage(), Toast.LENGTH_LONG).show();
                     }
+                } else {
+                    Toast.makeText(LoginActivity.this,
+                            "Erro na resposta do servidor.", Toast.LENGTH_LONG).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse> call, Throwable t) {
                 Toast.makeText(LoginActivity.this,
-                        t.getMessage(), Toast.LENGTH_LONG).show();
+                        "Erro de rede: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }

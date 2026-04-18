@@ -26,6 +26,15 @@ public class ApiResponse {
     @SerializedName("timestamp")
     private String timestamp;
 
+    @SerializedName("status")
+    private String status;
+
+    @SerializedName("token")
+    private String token;
+
+    @SerializedName("user_id")
+    private String userId;
+
     // Construtores
     public ApiResponse() {}
 
@@ -37,11 +46,21 @@ public class ApiResponse {
 
     // Getters e Setters
     public boolean isSuccess() {
+        // O backend agora devolve "status": "success" ou success booleano
+        if (status != null && status.equals("success")) return true;
         return success;
     }
 
     public void setSuccess(boolean success) {
         this.success = success;
+    }
+
+    public String getToken() {
+        return token;
+    }
+    
+    public String getUserId() {
+        return userId;
     }
 
     public Object getData() {

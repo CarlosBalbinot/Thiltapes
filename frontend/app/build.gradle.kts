@@ -83,4 +83,7 @@ dependencies {
 
     // Gson - JSON serialization/deserialization
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Crypto para guardar o Token com Seguranca (EncryptedSharedPreferences)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }

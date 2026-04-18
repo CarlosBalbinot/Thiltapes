@@ -79,4 +79,12 @@
         android:padding="12dp"
         android:text="Entrar" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnGoToRegister"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Criar nova conta" />
+
 </LinearLayout>
