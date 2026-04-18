@@ -28,15 +28,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
     env_file:
       - ./config/.env.production
-    command: tunnel --no-autoupdate run
+    command: caddy reverse-proxy --from https://${DOMAIN} --to http://backend:3000
     depends_on:
-      backend:
-        condition: service_started
-    restart: unless-stopped
+      - backend
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

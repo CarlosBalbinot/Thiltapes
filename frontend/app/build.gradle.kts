@@ -33,7 +33,7 @@ android {
 
         create("prod") {
             dimension = "environment"
-            buildConfigField("String", "API_BASE_URL", "\"https://thiltapes-prod.trycloudflare.com/api/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://thiltapesgo.duckdns.org/api/\"")
             manifestPlaceholders["usesCleartextTraffic"] = false
         }
     }

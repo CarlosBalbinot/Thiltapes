@@ -1,48 +1,65 @@
-# Deploy HTTPS (Ubuntu) - Thiltapes Backend
+# Deploy Thiltapes com HTTPS Gratuito (DuckDNS + Caddy)
 
-Guia simples para subir o backend em HTTPS usando Cloudflare Tunnel (grátis, sem configuração de DNS).
+Este guia usa o **DuckDNS** (subdomínio gratuito) e o **Caddy** (proxy reverso com HTTPS automático) para conectar o IP público `177.44.248.28` à internet de forma segura sem Cloudflare.
 
-Fluxo final deste projeto: deploy usa apenas `config/.env.production` como fonte de configuracao.
+---
 
-## 1. Pré-requisitos
+### Passo 1: Criar o Subdomínio no DuckDNS
 
-- Servidor Ubuntu com acesso sudo
-- Projeto clonado no servidor
-- Docker e Docker Compose instalados
-- Backend funcionando via `docker compose` na porta 3000
-- Conta Cloudflare grátis (para gerar o túnel)
+1. Acesse [duckdns.org](https://www.duckdns.org/) e faça login (com Google, GitHub, etc).
+2. Na caixa "sub domain", digite o nome que desejar (ex: `thiltapesgo`) e clique em **add domain**.
+3. O painel mostrará o domínio. Garanta que o campo de IP esteja com o IP da sua VM: `177.44.248.28` (se não estiver, altere e clique em update ip).
 
-## 2. Criar Cloudflare Account e Gerar Túnel
+### Passo 2: Configurar o Domínio no `.env.production`
 
-1. Acesse https://dash.cloudflare.com
-2. Crie uma conta grátis
-3. Vá em **Zero Trust > Tunnels**
-4. Clique em **Create a tunnel** e escolha um nome (ex: `thiltapes-prod`)
-5. Na tela de instalação, copie o token do túnel
+1. Abra o arquivo `backend/config/.env.production`.
+2. O final dele deve conter a variável `DOMAIN` com o domínio que você acabou de criar:
 
-## 3. Usar Cloudflare Tunnel via Docker
-
-Como o projeto já usa Docker Compose, o `cloudflared` também sobe como container.
-
-## 4. Configurar o arquivo unico de producao
-
-Edite `config/.env.production` e preencha os valores reais:
-
-```dotenv
-DB_PASSWORD=SEU_PASSWORD_REAL
-DB_ADMIN_PASSWORD=SEU_PASSWORD_ADMIN_REAL
-JWT_SECRET=SEU_JWT_SECRET_FORTE
-CORS_ORIGIN=https://thiltapes-prod.trycloudflare.com
-TUNNEL_TOKEN=SEU_TOKEN_DO_TUNNEL
+```env
+DOMAIN=thiltapesgo.duckdns.org
 ```
 
-## 5. Subir os containers
+### Passo 3: Liberar as Portas na VM (Importantíssimo)
+
+O Caddy precisa gerar certificados (Let's Encrypt). Para isso, a sua VM no provedor de nuvem DEVE permitir tráfego nas portas **80** (HTTP) e **443** (HTTPS).
+Comandos no Ubuntu (caso use UFW):
 
 ```bash
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw reload
+```
+
+_(Lembre-se também de liberar na interface gráfica da nuvem de onde sua VM está hospedada, se houver painel de Firewall/Security Group lá)._
+
+### Passo 4: Subir os Containers
+
+Dentro da pasta `backend`, derrube os containers velhos e suba a nova estrutura:
+
+```bash
+docker compose down
 docker compose up -d --build
 ```
 
-## 6. Garantir Backend Local
+> O container `caddy` subirá, conversará com a Let's Encrypt pelo seu IP público e forjará um certificado HTTPS válido em poucos segundos.
+
+### Passo 5: Testar
+
+Abra no navegador ou digite no terminal:
+
+```bash
+curl https://thiltapesgo.duckdns.org/api/health
+```
+
+### Passo 6: Atualizar o App Android
+
+1. No arquivo `frontend/app/build.gradle.kts`, certifique-se de que a `API_BASE_URL` do ambiente `:prod` está apontando para o seu novo DuckDNS:
+
+```kotlin
+buildConfigField("String", "API_BASE_URL", "\"https://thiltapesgo.duckdns.org/api/\"")
+```
+
+2. Gere o app apontando para a produção.
 
 O backend deve responder dentro da rede do compose em `http://backend:3000`:
 
