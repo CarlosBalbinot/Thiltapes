@@ -32,8 +32,7 @@ services:
     image: cloudflare/cloudflared:latest
     env_file:
       - ./config/.env.production
-    entrypoint: ['sh', '-c']
-    command: 'cloudflared tunnel --no-autoupdate run --token $${CLOUDFLARE_TUNNEL_TOKEN}'
+    command: tunnel --no-autoupdate run
     depends_on:
       backend:
         condition: service_started
