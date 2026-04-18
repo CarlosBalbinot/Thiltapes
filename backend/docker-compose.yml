@@ -19,24 +19,24 @@ services:
 
   backend:
     build: .
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: thiltapes_db
-      DB_ADMIN_HOST: postgres
-      DB_ADMIN_PORT: 5432
-      DB_ADMIN_USER: postgres
-      DB_ADMIN_PASSWORD: postgres
-      CORS_ORIGIN: https://thiltapes-prod.trycloudflare.com
+    env_file:
+      - ./config/.env.production
     ports:
       - '3000:3000'
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    env_file:
+      - ./config/.env.production
+    entrypoint: ['sh', '-c']
+    command: 'cloudflared tunnel --no-autoupdate run --token $${CLOUDFLARE_TUNNEL_TOKEN}'
+    depends_on:
+      backend:
+        condition: service_started
     restart: unless-stopped
 
 volumes:

@@ -2,11 +2,14 @@
 
 Guia simples para subir o backend em HTTPS usando Cloudflare Tunnel (grátis, sem configuração de DNS).
 
+Fluxo final deste projeto: deploy usa apenas `config/.env.production` como fonte de configuracao.
+
 ## 1. Pré-requisitos
 
 - Servidor Ubuntu com acesso sudo
 - Projeto clonado no servidor
-- Backend funcionando localmente na porta 3000
+- Docker e Docker Compose instalados
+- Backend funcionando via `docker compose` na porta 3000
 - Conta Cloudflare grátis (para gerar o túnel)
 
 ## 2. Criar Cloudflare Account e Gerar Túnel
@@ -15,36 +18,41 @@ Guia simples para subir o backend em HTTPS usando Cloudflare Tunnel (grátis, se
 2. Crie uma conta grátis
 3. Vá em **Zero Trust > Tunnels**
 4. Clique em **Create a tunnel** e escolha um nome (ex: `thiltapes-prod`)
-5. Na tela de instalação, copie o comando (`cloudflared service install YOUR_TOKEN_HERE`)
+5. Na tela de instalação, copie o token do túnel
 
-## 3. Instalar Cloudflare Tunnel
+## 3. Usar Cloudflare Tunnel via Docker
 
-Na VM, execute:
+Como o projeto já usa Docker Compose, o `cloudflared` também sobe como container.
 
-```bash
-curl -L --output cloudflared.tgz https://github.com/cloudflare/cloudflared/releases/download/2024.1.0/cloudflared-linux-amd64.tgz
-tar -xzf cloudflared.tgz
-sudo cp cloudflared /usr/local/bin/
-sudo chmod +x /usr/local/bin/cloudflared
+## 4. Configurar o arquivo unico de producao
+
+Edite `config/.env.production` e preencha os valores reais:
+
+```dotenv
+DB_PASSWORD=SEU_PASSWORD_REAL
+DB_ADMIN_PASSWORD=SEU_PASSWORD_ADMIN_REAL
+JWT_SECRET=SEU_JWT_SECRET_FORTE
+CORS_ORIGIN=https://thiltapes-prod.trycloudflare.com
+CLOUDFLARE_TUNNEL_TOKEN=SEU_TOKEN_DO_TUNNEL
 ```
 
-Verificar instalação:
+## 5. Subir os containers
 
 ```bash
-cloudflared --version
+docker compose up -d --build
 ```
 
-## 4. Garantir Backend Local
+## 6. Garantir Backend Local
 
-O backend deve responder localmente em `127.0.0.1:3000`:
+O backend deve responder dentro da rede do compose em `http://backend:3000`:
 
 ```bash
-curl http://127.0.0.1:3000/api/health
+docker compose exec backend curl http://backend:3000/api/health
 ```
 
 Se falhar, valide o serviço Node primeiro.
 
-## 5. Configurar o Túnel
+## 7. Configurar o Túnel
 
 No painel Cloudflare (Zero Trust > Tunnels), após criar o túnel:
 
@@ -53,25 +61,23 @@ No painel Cloudflare (Zero Trust > Tunnels), após criar o túnel:
 3. Preencha:
    - **Subdomain:** `thiltapes-prod` (ou qualquer nome)
    - **Domain:** `trycloudflare.com` (default) ou seu domínio próprio
-   - **Service:** `HTTP://127.0.0.1:3000`
+
+- **Service type:** `HTTP`
+- **Service URL:** `http://backend:3000`
+
 4. Clique **Save**
 
 Cloudflare vai gerar uma URL: `https://thiltapes-prod.trycloudflare.com`
 
-## 6. Rodar o Túnel (Manual ou como Serviço)
+## 8. Rodar o Túnel
 
-**Opção A - Rodar manualmente (para testes):**
+Como o serviço `cloudflared` ja esta no `docker-compose.yml`, ele sobe junto com o projeto.
 
-```bash
-cloudflared tunnel run --token YOUR_TOKEN_FROM_CLOUDFLARE
-```
-
-**Opção B - Instalar como serviço (para deixar sempre ativo):**
+Verifique:
 
 ```bash
-sudo cloudflared service install YOUR_TOKEN_FROM_CLOUDFLARE
-sudo systemctl restart cloudflared
-sudo systemctl status cloudflared
+docker compose ps
+docker compose logs -f cloudflared
 ```
 
 Você vai ver na saída algo como:
@@ -83,7 +89,7 @@ INF Route registered: https://thiltapes-prod.trycloudflare.com
 
 Copie essa URL — é a URL pública da sua API.
 
-## 7. Testar a API
+## 9. Testar a API
 
 ```bash
 curl https://thiltapes-prod.trycloudflare.com/api/health
@@ -99,7 +105,7 @@ Deve retornar:
 }
 ```
 
-## 8. Atualizar o Android para Usar Cloudflare
+## 10. Atualizar o Android para Usar Cloudflare
 
 Edite `frontend/app/build.gradle.kts` e substitua a URL do `prod` flavor:
 
@@ -113,7 +119,7 @@ productFlavors {
 }
 ```
 
-## 9. Gerar APKs
+## 11. Gerar APKs
 
 No Android Studio ou terminal:
 
@@ -129,22 +135,24 @@ No Android Studio ou terminal:
 
 Instale o APK `prodRelease` no celular e teste.
 
-## 10. Checklist Rápido (5 minutos)
+## 12. Checklist Rápido (5 minutos)
 
 - [ ] Conta Cloudflare criada
+- [ ] `config/.env.production` preenchido com token e segredos reais
+- [ ] `docker compose up -d --build` executado sem erros
 - [ ] Túnel configurado no painel Cloudflare
-- [ ] Backend responde em `127.0.0.1:3000`
-- [ ] Cloudflare Tunnel instalado e rodando
+- [ ] Backend responde em `http://backend:3000` dentro do compose
+- [ ] Serviço `cloudflared` rodando via docker compose
 - [ ] URL do túnel testada com curl
 - [ ] `build.gradle.kts` atualizado com a URL do Cloudflare
 - [ ] APK `prodRelease` gerado e instalado no celular
 - [ ] App consegue conectar à API via Cloudflare
 
-## 11. Parar o Túnel (Quando Terminar os Testes)
+## 13. Parar o Túnel (Quando Terminar os Testes)
 
 ```bash
-# Se for serviço:
-sudo systemctl stop cloudflared
+# Se estiver no docker compose:
+docker compose down
 
 # Deletar no painel Cloudflare:
 # Zero Trust > Tunnels > Delete thiltapes-prod
