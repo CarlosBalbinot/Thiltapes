@@ -36,7 +36,7 @@ services:
       - '443:443'
     env_file:
       - ./config/.env.production
-    command: caddy reverse-proxy --from https://${DOMAIN} --to http://backend:3000
+    command: caddy reverse-proxy --from https://thiltapesgo.duckdns.org --to http://backend:3000
     depends_on:
       - backend
     volumes:
