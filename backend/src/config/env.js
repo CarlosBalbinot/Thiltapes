@@ -11,7 +11,8 @@ const envPath = path.resolve(__dirname, '../../config', envFile);
 
 process.env.NODE_ENV = nodeEnv;
 
-dotenv.config({ path: envPath, override: true });
+// Nao sobrescreve variaveis ja definidas no ambiente (ex.: Docker Compose).
+dotenv.config({ path: envPath, override: false });
 
 // Construir DATABASE_URL a partir de componentes individuais
 function buildDatabaseUrl(host, port, user, password, database) {
