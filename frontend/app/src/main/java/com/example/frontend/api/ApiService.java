@@ -62,13 +62,13 @@ public interface ApiService {
     // ============================================================
     // GAMES
     // ============================================================
-    @GET("games")
+    @GET("game/fetch-all")
     Call<ApiResponse> getGames();
 
-    @GET("games/{gameId}")
+    @GET("game/find-by-id/{gameId}")
     Call<ApiResponse> getGame(@Path("gameId") String gameId);
 
-    @POST("games")
+    @POST("game/create")
     Call<ApiResponse> createGame(@Body Object request);
 
     // ============================================================

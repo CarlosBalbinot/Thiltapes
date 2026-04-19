@@ -27,14 +27,14 @@ public class ApiInterceptor implements Interceptor {
             .header("X-API-Version", AppConfig.API_VERSION);
 
         // Adicionando o Token JWT nas requisições:
-        try {
-            String token = TokenManager.getInstance().getToken();
-            if (token != null && !token.isEmpty()) {
-                requestBuilder.header("Authorization", "Bearer " + token);
-            }
-        } catch (IllegalStateException e) {
-            // Ignorar erro se o TokenManager não tiver sido instanciado a tempo (ex: inicio do app)
-        }
+        // try {
+        //    String token = TokenManager.getInstance().getToken();
+        //    if (token != null && !token.isEmpty()) {
+        //        requestBuilder.header("Authorization", "Bearer " + token);
+        //    }
+        //} catch (IllegalStateException e) {
+        //    // Ignorar erro se o TokenManager não tiver sido instanciado a tempo (ex: inicio do app)
+        //}
 
         Request newRequest = requestBuilder.build();
 
