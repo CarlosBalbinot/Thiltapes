@@ -1,7 +1,9 @@
 package com.example.frontend;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -19,6 +21,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private TextInputEditText username;
     private TextInputEditText password;
+    private RadioGroup rgUserType;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,17 +30,15 @@ public class LoginActivity extends AppCompatActivity {
 
         username = findViewById(R.id.username);
         password = findViewById(R.id.password);
+        rgUserType = findViewById(R.id.rgUserType);
         MaterialButton btnLogin = findViewById(R.id.btnLogin);
         MaterialButton btnGoToRegister = findViewById(R.id.btnGoToRegister);
 
-        // Inicia a lib de criptografia JWT
         TokenManager.init(this);
 
         btnLogin.setOnClickListener(v -> login());
-
-        btnGoToRegister.setOnClickListener(v -> {
-            startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
-        });
+        btnGoToRegister.setOnClickListener(v ->
+                startActivity(new Intent(LoginActivity.this, RegisterActivity.class)));
     }
 
     private void login() {
@@ -45,23 +46,34 @@ public class LoginActivity extends AppCompatActivity {
         data.put("username", username.getText().toString());
         data.put("password", password.getText().toString());
 
+        // Pega o papel selecionado
+        boolean isAdmin = rgUserType.getCheckedRadioButtonId() == R.id.rbAdmin;
+
         ApiClient.getApiService().login(data).enqueue(new Callback<ApiResponse>() {
             @Override
             public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
-                if(response.isSuccessful() && response.body() != null){
-                    if(response.body().isSuccess()){
-                        String userId = response.body().getUserId(); // O backend agora manda user_id no root object como String (UUID)
-                        String token = response.body().getToken(); // Pegamos o jwt
+                if (response.isSuccessful() && response.body() != null) {
+                    if (response.body().isSuccess()) {
+                        String userId = response.body().getUserId();
+                        String token = response.body().getToken();
 
-                        // Salvar de forma criptografada
                         TokenManager.getInstance().saveToken(token);
                         TokenManager.getInstance().saveUserId(userId);
+
+                        // Salvar o papel do usuário
+                        SharedPreferences prefs = getSharedPreferences("thiltapes_prefs", MODE_PRIVATE);
+                        prefs.edit().putBoolean("is_admin", isAdmin).apply();
 
                         Toast.makeText(LoginActivity.this,
                                 "Login efetuado com sucesso!", Toast.LENGTH_SHORT).show();
 
-                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                        finish(); // Fecha a tela de login para não voltar nela ao apertar "voltar"
+                        // Redirecionar conforme papel
+                        if (isAdmin) {
+                            startActivity(new Intent(LoginActivity.this, AdminCreateGameActivity.class));
+                        } else {
+                            startActivity(new Intent(LoginActivity.this, PlayerHomeActivity.class));
+                        }
+                        finish();
                     } else {
                         Toast.makeText(LoginActivity.this,
                                 "Falha no login: " + response.body().getMessage(), Toast.LENGTH_LONG).show();
