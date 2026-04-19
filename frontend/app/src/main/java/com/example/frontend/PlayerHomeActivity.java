@@ -7,8 +7,10 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.frontend.api.ApiClient;
-import com.example.frontend.api.ApiResponse;
+import com.example.frontend.api.TokenManager;
 import com.google.android.material.button.MaterialButton;
+
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -34,14 +36,15 @@ public class PlayerHomeActivity extends AppCompatActivity {
     }
 
     private void carregarInventario() {
-        ApiClient.getApiService().getMyInventory().enqueue(new Callback<ApiResponse>() {
+        String playerId = TokenManager.getInstance().getUserId();
+
+        ApiClient.getApiService().getMyInventory(playerId).enqueue(new Callback<List<Object>>() {
             @Override
-            public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    // TODO: quando tiver a tela de inventário, navegar para ela
-                    // Por enquanto mostra toast de confirmação
+            public void onResponse(Call<List<Object>> call, Response<List<Object>> response) {
+                if (response.isSuccessful() && response.body() != null) {
                     Toast.makeText(PlayerHomeActivity.this,
-                            "Inventário carregado!", Toast.LENGTH_SHORT).show();
+                            "Inventário carregado! " + response.body().size() + " carta(s).",
+                            Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(PlayerHomeActivity.this,
                             "Erro ao carregar inventário.", Toast.LENGTH_SHORT).show();
@@ -49,7 +52,7 @@ public class PlayerHomeActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailure(Call<ApiResponse> call, Throwable t) {
+            public void onFailure(Call<List<Object>> call, Throwable t) {
                 Toast.makeText(PlayerHomeActivity.this,
                         "Erro de rede: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }

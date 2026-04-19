@@ -9,6 +9,7 @@ import retrofit2.http.Body;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
 import java.util.Map;
+import java.util.List;
 
 /**
  * Interface Retrofit - Define todos os endpoints da API
@@ -90,8 +91,8 @@ public interface ApiService {
     // ============================================================
     // INVENTORY
     // ============================================================
-    @GET("players/me/inventory")
-    Call<ApiResponse> getMyInventory();
+    @GET("user/get-inventory/{player_id}")
+    Call<List<Object>> getMyInventory(@Path("player_id") String playerId);
 
     @POST("games/{gameId}/collect")
     Call<ApiResponse> collectCard(@Path("gameId") String gameId, @Body Object request);
