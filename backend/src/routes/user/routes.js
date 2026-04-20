@@ -2,7 +2,6 @@ import AppDataSource from '../../config/dataSource.js';
 import { hashPassword, verifyPassword } from '../../utils/bcrypt.js';
 import { getDateTimeNow } from '../../utils/datetimenow.js';
 import { Router } from 'express';
-import jwt from 'jsonwebtoken';
 
 const router = Router();
 
@@ -70,19 +69,11 @@ router.post('/login', async (req, res) => {
     const isValid = await verifyPassword(password, user.password_hash);
 
     if (isValid) {
-      // Gera o token JWT com o ID e Role do usuário
-      const token = jwt.sign(
-        { id: user.id, role: user.role, username: user.username },
-        process.env.JWT_SECRET || 'secret_de_fallback',
-        { expiresIn: process.env.JWT_EXPIRATION || '7d' }
-      );
-
       res.status(200).json({
         status: 'success',
         message: 'Login realizado com sucesso',
         timestamp: getDateTimeNow(),
         user_id: user.id,
-        token: token, // Envia o token na resposta
       });
     } else {
       res

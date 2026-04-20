@@ -55,9 +55,7 @@ public class LoginActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     if (response.body().isSuccess()) {
                         String userId = response.body().getUserId();
-                        String token = response.body().getToken();
 
-                        TokenManager.getInstance().saveToken(token);
                         TokenManager.getInstance().saveUserId(userId);
 
                         // Salvar o papel do usuário

@@ -15,6 +15,8 @@ import com.example.frontend.api.ApiResponse;
 import com.example.frontend.api.TokenManager;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -68,17 +70,24 @@ public class AdminCreateGameActivity extends AppCompatActivity {
         }
 
         tvLocalizacao.setText("📍 Obtendo localização...");
-        fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
-            if (location != null) {
-                currentLat = location.getLatitude();
-                currentLng = location.getLongitude();
-                locationObtained = true;
-                tvLocalizacao.setText("📍 Localização obtida: " +
-                        String.format("%.5f, %.5f", currentLat, currentLng));
-            } else {
-                tvLocalizacao.setText("📍 Não foi possível obter localização. Tente novamente.");
-            }
-        });
+
+        CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellationTokenSource.getToken())
+                .addOnSuccessListener(location -> {
+                    if (location != null) {
+                        currentLat = location.getLatitude();
+                        currentLng = location.getLongitude();
+                        locationObtained = true;
+                        tvLocalizacao.setText("📍 Localização obtida: " +
+                                String.format("%.5f, %.5f", currentLat, currentLng));
+                    } else {
+                        tvLocalizacao.setText("📍 Não foi possível obter localização. Tente usar o Maps do Emulador.");
+                        Toast.makeText(this, "Dica: No Emulador, clique nos (...) > Location > Set Location", Toast.LENGTH_LONG).show();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    tvLocalizacao.setText("📍 Erro ao buscar GPS.");
+                });
     }
 
     @Override

@@ -29,9 +29,6 @@ public class ApiResponse {
     @SerializedName("status")
     private String status;
 
-    @SerializedName("token")
-    private String token;
-
     @SerializedName("user_id")
     private String userId;
 
@@ -55,10 +52,6 @@ public class ApiResponse {
         this.success = success;
     }
 
-    public String getToken() {
-        return token;
-    }
-    
     public String getUserId() {
         return userId;
     }
