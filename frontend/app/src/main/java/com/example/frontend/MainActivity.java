@@ -1,38 +1,34 @@
 package com.example.frontend;
 
+import android.content.Intent;
 import android.os.Bundle;
-import android.widget.TextView;
 import android.view.View;
-import android.util.Log;
+import android.widget.ImageButton;
+import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.example.frontend.api.ApiClient;
-import com.example.frontend.api.ApiService;
 import com.example.frontend.api.ApiResponse;
+import com.example.frontend.api.ApiService;
 import com.example.frontend.api.AppConfig;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.android.material.navigation.NavigationView;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 /**
- * MainActivity - Activity principal
- * Exibe o status da API em tempo real
+ * MainActivity - Activity principal com Mapa e Menu Lateral
  */
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "MainActivity";
     
+    private DrawerLayout drawerLayout;
     private TextView statusText;
-    private TextView detailsText;
-    private TextView urlText;
-    private TextView environmentText;
     private View statusIndicator;
 
     @Override
@@ -40,137 +36,93 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-        
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
+
+        // Inicializar Drawer e Navigation View
+        drawerLayout = findViewById(R.id.drawer_layout);
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        ImageButton btnMenu = findViewById(R.id.btnMenu);
+
+        if (btnMenu != null) {
+            btnMenu.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
+        }
+
+        navigationView.setNavigationItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.nav_inventory) {
+                startActivity(new Intent(this, InventoryActivity.class));
+            } else if (id == R.id.nav_games) {
+                startActivity(new Intent(this, GameListActivity.class));
+            } else if (id == R.id.nav_logout) {
+                getSharedPreferences("APP", MODE_PRIVATE).edit().clear().apply();
+                startActivity(new Intent(this, LoginActivity.class));
+                finish();
+            }
+            drawerLayout.closeDrawer(GravityCompat.START);
+            return true;
         });
 
-        // Inicializar views
+        // Inicializar outras views
         statusText = findViewById(R.id.statusText);
-        detailsText = findViewById(R.id.sample_text);
-        urlText = findViewById(R.id.urlText);
-        environmentText = findViewById(R.id.environmentText);
         statusIndicator = findViewById(R.id.statusIndicator);
+        TextView urlText = findViewById(R.id.urlText);
 
         // Exibir configuração
-        urlText.setText(AppConfig.API_BASE_URL);
-        String env = android.os.Build.VERSION.SDK_INT >= 23
-            ? (getApplicationContext().getApplicationInfo().flags & 2) == 0 ? "release" : "debug"
-            : "unknown";
-        environmentText.setText(env);
+        if (urlText != null) {
+            urlText.setText(AppConfig.API_BASE_URL);
+        }
 
         // Testar conexão com backend
         testBackendConnection();
+
+        // Lógica do Botão Voltar moderna
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
+        });
     }
 
-    /**
-     * Testa conexão com o backend
-     */
     private void testBackendConnection() {
-        updateStatusUI("Conectando...", R.drawable.status_indicator_loading);
-        
         ApiService apiService = ApiClient.getApiService();
         apiService.healthCheck().enqueue(new Callback<ApiResponse>() {
             @Override
             public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    ApiResponse apiResponse = response.body();
-                    handleApiResponse(apiResponse);
+                    handleApiResponse(response.body());
                 } else {
-                    handleApiError("HTTP " + response.code(), response.message());
+                    updateStatusUI("ERRO", android.R.color.holo_red_dark);
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse> call, Throwable t) {
-                handleConnectionFailure(t);
+                updateStatusUI("OFFLINE", android.R.color.holo_red_dark);
             }
         });
     }
 
-    /**
-     * Processa resposta bem-sucedida da API
-     */
     private void handleApiResponse(ApiResponse apiResponse) {
         if (apiResponse.isSuccess()) {
-            // Sucesso
-            updateStatusUI("CONECTADO", R.drawable.status_indicator_success);
-            
-            // Formatar resposta para exibição
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            String jsonResponse = gson.toJson(apiResponse);
-            
-            String details = "✅ Status: " + apiResponse.getMessage() + "\n\n" +
-                            "📍 Endpoint: GET /api/health\n" +
-                            "⏱️ Status HTTP: 200 OK\n\n" +
-                            "📦 Resposta:\n" + jsonResponse;
-            
-            detailsText.setText(details);
-            statusText.setTextColor(getColor(android.R.color.holo_green_dark));
-            
-            Log.i(TAG, "Conexão bem-sucedida: " + apiResponse.getMessage());
+            updateStatusUI("CONECTADO", android.R.color.holo_green_dark);
         } else {
-            // Erro da API (mesmo que HTTP 200)
-            handleApiError(apiResponse.getError(), apiResponse.getMessage());
+            updateStatusUI("ERRO API", android.R.color.holo_orange_dark);
         }
     }
 
-    /**
-     * Processa erro na resposta HTTP
-     */
-    private void handleApiError(String errorType, String errorMessage) {
-        updateStatusUI("ERRO", R.drawable.status_indicator_error);
-        
-        String details = "❌ Erro: " + errorType + "\n\n" +
-                        "📍 Endpoint: GET /api/health\n" +
-                        "ℹ️ Mensagem: " + errorMessage + "\n\n" +
-                        "Possíveis causas:\n" +
-                        "• Backend retornou erro\n" +
-                        "• Dados inválidos\n" +
-                        "• Versão de API incompatível";
-        
-        detailsText.setText(details);
-        statusText.setTextColor(getColor(android.R.color.holo_red_dark));
-        
-        Log.e(TAG, "Erro da API: " + errorType + " - " + errorMessage);
-    }
-
-    /**
-     * Processa falha de conexão
-     */
-    private void handleConnectionFailure(Throwable t) {
-        updateStatusUI("DESCONECTADO", R.drawable.status_indicator_error);
-        
-        String details = "❌ Falha de Conexão\n\n" +
-                        "📍 Endpoint: GET /api/health\n" +
-                        "🔗 URL: " + AppConfig.API_BASE_URL + "\n" +
-                        "⚠️ Erro: " + t.getMessage() + "\n\n" +
-                        "Verifique:\n" +
-                        "✓ Backend está rodando? (npm run dev)\n" +
-                        "✓ URL em AppConfig.java está correta?\n" +
-                        "✓ Firewall permite conexão?\n" +
-                        "✓ Emulador pode chegar ao PC (10.0.2.2)?";
-        
-        detailsText.setText(details);
-        statusText.setTextColor(getColor(android.R.color.holo_red_dark));
-        
-        Log.e(TAG, "Falha de conexão: " + t.getMessage(), t);
-    }
-
-    /**
-     * Atualiza a UI com novo status
-     */
-    private void updateStatusUI(String statusMessage, int indicatorDrawable) {
-        statusText.setText(statusMessage);
-        statusIndicator.setBackground(getDrawable(indicatorDrawable));
+    private void updateStatusUI(String message, int colorRes) {
+        if (statusText != null) statusText.setText(message);
+        if (statusIndicator != null) statusIndicator.setBackgroundColor(getColor(colorRes));
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Re-testar ao voltar para a activity
         testBackendConnection();
     }
 }
