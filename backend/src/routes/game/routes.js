@@ -7,14 +7,14 @@ import { getDateTimeNow } from '../../utils/datetimenow.js';
 export const router = Router();
 
 /**
- * Creates a new game instance, generates the requested number of cards, 
+ * Creates a new game instance, generates the requested number of cards,
  * and distributes them geographically within a specified radius.
  */
 router.post('/create', async (req, res) => {
   try {
     const { name, admin_id, number_of_cards, current_location, radius } = req.body;
     const gameRepository = AppDataSource.getRepository('Game');
-    
+
     const game = await gameRepository.save({
       admin: { id: admin_id },
       name,
@@ -22,7 +22,10 @@ router.post('/create', async (req, res) => {
       created_at: getDateTimeNow(),
     });
 
-    const cardCreationPromises = Array.from({ length: number_of_cards }).map(async () => {
+    const generatedFeatures = [];
+
+    // Rodando sequencialmente para não tomar block (429) da API externa
+    for (let i = 0; i < number_of_cards; i++) {
       const card = await generateCard();
       const { lat, lng } = getRandomLocation(current_location.lat, current_location.lng, radius);
 
@@ -39,7 +42,7 @@ router.post('/create', async (req, res) => {
         [game.id, card.image, card.rarity, card.thiltapes_name, radius, lng, lat]
       );
 
-      return {
+      generatedFeatures.push({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [lng, lat] },
         properties: {
@@ -47,10 +50,8 @@ router.post('/create', async (req, res) => {
           name: card.thiltapes_name,
           rarity: card.rarity,
         },
-      };
-    });
-
-    const generatedFeatures = await Promise.all(cardCreationPromises);
+      });
+    }
 
     res.status(201).json({
       status: 'success',
@@ -92,7 +93,7 @@ router.get('/fetch-all', async (req, res) => {
   try {
     const gameRepository = AppDataSource.getRepository('Game');
     const games = await gameRepository.find({ where: { status: 'ACTIVE' } });
-    
+
     res.status(200).json(games);
   } catch (error) {
     console.error(error);

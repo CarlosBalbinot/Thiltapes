@@ -1,23 +1,34 @@
-import TCGdex from "@tcgdex/sdk";
+import TCGdex from '@tcgdex/sdk';
 
-/**
- * Fetches a random card from the TCGdex API.
- * Continuously polls for a new card if the current one is missing an image or rarity, 
- * preventing 'undefined' values from being inserted into the database.
- * * @returns {Promise<{thiltapes_name: string, rarity: string, image: string}>} A validated card object.
- */
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export default async function generateCard() {
-  const tcgdex = new TCGdex();
-  let randomCard = await tcgdex.random.card();
+  const tcgdex = new TCGdex(); 
+  let attempts = 3;
 
-  // Garante que a carta possui imagem e raridade antes de prosseguir
-  while (!randomCard || !randomCard.image || !randomCard.rarity) {
-    randomCard = await tcgdex.random.card();
+  while (attempts > 0) {
+    try {
+      const randomCard = await tcgdex.random.card();
+      
+      if (randomCard && randomCard.image && randomCard.rarity) {
+        return {
+          thiltapes_name: randomCard.name,
+          rarity: randomCard.rarity,
+          image: randomCard.getImageURL("high", "png"),
+        };
+      }
+    } catch (error) {
+      console.warn(`[TCGdex Aviso] Falha na tentativa ${4 - attempts}/3:`, error.message);
+    }
+    
+    await delay(500); 
+    attempts--;
   }
 
+  console.error("❌ TCGdex inacessível após 3 tentativas. Injetando MissingNo.");
   return {
-    thiltapes_name: randomCard.name,
-    rarity: randomCard.rarity,
-    image: randomCard.getImageURL("high", "png"),
+    thiltapes_name: "MissingNo (Fallback)",
+    rarity: "Common",
+    image: "https://assets.tcgdex.net/en/swsh/swsh3/1/high.png", 
   };
 }
