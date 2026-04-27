@@ -48,8 +48,8 @@ public class GameAdapter extends RecyclerView.Adapter<GameAdapter.GameViewHolder
 
         public GameViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvName = itemView.findViewById(R.id.tvGameName);
-            tvDescription = itemView.findViewById(R.id.tvGameDescription);
+            tvName = itemView.findViewById(R.id.gameName);
+            tvDescription = itemView.findViewById(R.id.gameDescription);
         }
     }
 }

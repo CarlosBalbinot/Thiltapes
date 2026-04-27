@@ -44,7 +44,8 @@ public class InventoryActivity extends AppCompatActivity {
     }
 
     private void loadInventory() {
-        ApiClient.getApiService().getMyInventory().enqueue(new Callback<ApiResponse>() {
+        String playerId = getIntent().getStringExtra("playerId");
+        ApiClient.getApiService().getMyInventory(playerId).enqueue(new Callback<ApiResponse>() {
             @Override
             public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {

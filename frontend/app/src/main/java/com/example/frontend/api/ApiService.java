@@ -92,7 +92,7 @@ public interface ApiService {
     // INVENTORY
     // ============================================================
     @GET("user/get-inventory/{player_id}")
-    Call<List<Object>> getMyInventory(@Path("player_id") String playerId);
+    Call<ApiResponse> getMyInventory(@Query("playerId") String playerId);
 
     @POST("games/{gameId}/collect")
     Call<ApiResponse> collectCard(@Path("gameId") String gameId, @Body Object request);
