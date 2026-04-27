@@ -8,9 +8,11 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.frontend.api.ApiClient;
-import com.example.frontend.api.ApiResponse;
 import com.example.frontend.api.TokenManager;
 import com.google.android.material.button.MaterialButton;
+
+import java.util.List;
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -51,10 +53,10 @@ public class PlayerHomeActivity extends AppCompatActivity {
     private void carregarInventario() {
         String playerId = TokenManager.getInstance().getUserId();
 
-        ApiClient.getApiService().getMyInventory(playerId).enqueue(new Callback<ApiResponse>() {
+        ApiClient.getApiService().getMyInventory(playerId).enqueue(new Callback<List<Map<String, Object>>>() {
             @Override
-            public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
+            public void onResponse(Call<List<Map<String, Object>>> call, Response<List<Map<String, Object>>> response) {
+                if (response.isSuccessful()) {
                     startActivity(new Intent(PlayerHomeActivity.this, InventoryActivity.class));
                 } else {
                     Toast.makeText(PlayerHomeActivity.this, "Erro ao carregar inventário.", Toast.LENGTH_SHORT).show();
@@ -62,7 +64,7 @@ public class PlayerHomeActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailure(Call<ApiResponse> call, Throwable t) {
+            public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
                 Toast.makeText(PlayerHomeActivity.this, "Erro de rede: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });

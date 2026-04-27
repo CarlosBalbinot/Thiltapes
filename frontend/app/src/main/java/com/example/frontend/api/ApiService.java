@@ -51,5 +51,5 @@ public interface ApiService {
     // INVENTORY
     // ============================================================
     @GET("user/get-inventory/{player_id}")
-    Call<ApiResponse> getMyInventory(@Query("playerId") String playerId);
+    Call<List<Map<String, Object>>> getMyInventory(@Path("player_id") String playerId);
 }
