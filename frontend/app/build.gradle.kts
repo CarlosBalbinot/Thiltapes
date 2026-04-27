@@ -67,26 +67,17 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
 
-    // ═══════════════════════════════════════════════════════════════
-    // API Communication - Retrofit + OkHttp
-    // ═══════════════════════════════════════════════════════════════
-    // Retrofit - REST Client
+    // Retrofit + OkHttp
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
-
-    // Retrofit Gson Converter
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
-
-    // OkHttp - HTTP Client
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-
-    // OkHttp Logging Interceptor (para debug)
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-
-    // Gson - JSON serialization/deserialization
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // Crypto para guardar o Token com Seguranca (EncryptedSharedPreferences)
+    // Security
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
+    // Google Maps & Location
     implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
 }

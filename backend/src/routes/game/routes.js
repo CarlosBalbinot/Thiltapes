@@ -102,6 +102,88 @@ router.get('/fetch-all', async (req, res) => {
 });
 
 /**
+ * Fetches all cards from a specific game.
+ */
+router.get('/:game_id/cards', async (req, res) => {
+  try {
+    const { game_id } = req.params;
+
+    const cards = await AppDataSource.query(
+      `
+      SELECT
+        gc.id,
+        gc.game_id,
+        gc.thiltapes_name,
+        gc.image_url,
+        gc.rarity,
+        gc.radius_meters,
+        gc.collected_by_id,
+        gc.created_at,
+        ST_X(gc.location) AS lng,
+        ST_Y(gc.location) AS lat
+      FROM game_cards gc
+      WHERE gc.game_id = $1::uuid
+      ORDER BY gc.created_at ASC
+      `,
+      [game_id]
+    );
+
+    res.status(200).json(cards);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: 'error', message: 'Erro ao buscar cartas do jogo' });
+  }
+});
+
+/**
+ * Fetches cards nearby a given location for a specific game.
+ */
+router.get('/:game_id/nearby', async (req, res) => {
+  try {
+    const { game_id } = req.params;
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Parâmetros lat e lng são obrigatórios e devem ser numéricos',
+      });
+    }
+
+    const cards = await AppDataSource.query(
+      `
+      SELECT
+        gc.id,
+        gc.game_id,
+        gc.thiltapes_name,
+        gc.image_url,
+        gc.rarity,
+        gc.radius_meters,
+        gc.collected_by_id,
+        gc.created_at,
+        ST_X(gc.location) AS lng,
+        ST_Y(gc.location) AS lat
+      FROM game_cards gc
+      WHERE gc.game_id = $1::uuid
+        AND ST_DWithin(
+          gc.location::geography,
+          ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
+          gc.radius_meters
+        )
+      ORDER BY gc.created_at ASC
+      `,
+      [game_id, lng, lat]
+    );
+
+    res.status(200).json(cards);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: 'error', message: 'Erro ao buscar cartas próximas' });
+  }
+});
+
+/**
  * Updates the name or status of an existing game.
  */
 router.put('/:game_id', async (req, res) => {

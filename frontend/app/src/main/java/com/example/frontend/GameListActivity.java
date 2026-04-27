@@ -2,9 +2,12 @@ package com.example.frontend;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -14,9 +17,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.frontend.api.ApiClient;
-import com.example.frontend.api.ApiResponse;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +28,10 @@ import retrofit2.Response;
 
 public class GameListActivity extends AppCompatActivity {
 
+    private static final String TAG = "GameListActivity";
     private RecyclerView rvGames;
+    private ProgressBar pbLoading;
+    private TextView tvEmptyState;
     private GameAdapter adapter;
 
     @Override
@@ -36,36 +39,65 @@ public class GameListActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game_list);
 
+        // Inicializar Views
         rvGames = findViewById(R.id.rvGames);
-        rvGames.setLayoutManager(new LinearLayoutManager(this));
+        pbLoading = findViewById(R.id.pbLoading);
+        tvEmptyState = findViewById(R.id.tvEmptyState);
+        ImageButton btnBack = findViewById(R.id.btnBack);
 
+        btnBack.setOnClickListener(v -> onBackPressed());
+
+        rvGames.setLayoutManager(new LinearLayoutManager(this));
+        
         loadGames();
     }
 
     private void loadGames() {
-        ApiClient.getApiService().getGames().enqueue(new Callback<ApiResponse>() {
+        showLoading(true);
+        Log.d(TAG, "Iniciando busca de mundos no servidor...");
+
+        ApiClient.getApiService().getGames().enqueue(new Callback<List<Map<String, Object>>>() {
             @Override
-            public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
+            public void onResponse(Call<List<Map<String, Object>>> call, Response<List<Map<String, Object>>> response) {
+                showLoading(false);
+                
                 if (response.isSuccessful() && response.body() != null) {
-                    ApiResponse apiRes = response.body();
-                    if (apiRes.isSuccess()) {
-                        Gson gson = new Gson();
-                        String json = gson.toJson(apiRes.getData());
-                        List<Map<String, Object>> games = gson.fromJson(json, new TypeToken<List<Map<String, Object>>>(){}.getType());
-                        
-                        adapter = new GameAdapter(games != null ? games : new ArrayList<>());
-                        rvGames.setAdapter(adapter);
-                    } else {
-                        Toast.makeText(GameListActivity.this, apiRes.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
+                    List<Map<String, Object>> games = response.body();
+                    updateUI(games);
+                } else {
+                    showError("Erro no servidor: " + response.code());
                 }
             }
 
             @Override
-            public void onFailure(Call<ApiResponse> call, Throwable t) {
-                Toast.makeText(GameListActivity.this, "Erro ao carregar mundos", Toast.LENGTH_SHORT).show();
+            public void onFailure(Call<List<Map<String, Object>>> call, Throwable t) {
+                showLoading(false);
+                showError("Erro de conexão: Verifique seu servidor");
             }
         });
+    }
+
+    private void updateUI(List<Map<String, Object>> games) {
+        if (games == null || games.isEmpty()) {
+            tvEmptyState.setText("Nenhum mundo disponível");
+            tvEmptyState.setVisibility(View.VISIBLE);
+            rvGames.setVisibility(View.GONE);
+        } else {
+            tvEmptyState.setVisibility(View.GONE);
+            rvGames.setVisibility(View.VISIBLE);
+            adapter = new GameAdapter(games);
+            rvGames.setAdapter(adapter);
+        }
+    }
+
+    private void showLoading(boolean loading) {
+        pbLoading.setVisibility(loading ? View.VISIBLE : View.GONE);
+    }
+
+    private void showError(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        tvEmptyState.setText(message);
+        tvEmptyState.setVisibility(View.VISIBLE);
     }
 
     class GameAdapter extends RecyclerView.Adapter<GameAdapter.ViewHolder> {
@@ -86,12 +118,14 @@ public class GameListActivity extends AppCompatActivity {
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             Map<String, Object> game = games.get(position);
             holder.tvName.setText(String.valueOf(game.getOrDefault("name", "Mundo Desconhecido")));
-            holder.tvDesc.setText(String.valueOf(game.getOrDefault("description", "Sem descrição disponível")));
+            holder.tvDesc.setText("Status: " + game.getOrDefault("status", "Ativo"));
 
             holder.itemView.setOnClickListener(v -> {
-                String gameId = String.valueOf(game.get("id"));
+                Object idObj = game.get("id");
+                if (idObj == null) idObj = game.get("_id");
+                
                 Intent intent = new Intent(GameListActivity.this, MainActivity.class);
-                intent.putExtra("GAME_ID", gameId);
+                intent.putExtra("GAME_ID", String.valueOf(idObj));
                 startActivity(intent);
             });
         }
@@ -103,7 +137,6 @@ public class GameListActivity extends AppCompatActivity {
 
         class ViewHolder extends RecyclerView.ViewHolder {
             TextView tvName, tvDesc;
-
             public ViewHolder(@NonNull View itemView) {
                 super(itemView);
                 tvName = itemView.findViewById(R.id.gameName);

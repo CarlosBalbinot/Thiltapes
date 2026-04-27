@@ -2,6 +2,7 @@ package com.example.frontend;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,8 +23,12 @@ public class PlayerHomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player_home);
 
+        ImageButton btnBack = findViewById(R.id.btnBack);
         MaterialButton btnEntrarPartida = findViewById(R.id.btnEntrarPartida);
         MaterialButton btnVerInventario = findViewById(R.id.btnVerInventario);
+
+        // Botão de voltar como Log Out
+        btnBack.setOnClickListener(v -> logout());
 
         btnEntrarPartida.setOnClickListener(v -> {
             startActivity(new Intent(PlayerHomeActivity.this, GameListActivity.class));
@@ -34,6 +39,15 @@ public class PlayerHomeActivity extends AppCompatActivity {
         });
     }
 
+    private void logout() {
+        TokenManager.getInstance().clear();
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+        Toast.makeText(this, "Sessão encerrada", Toast.LENGTH_SHORT).show();
+    }
+
     private void carregarInventario() {
         String playerId = TokenManager.getInstance().getUserId();
 
@@ -41,22 +55,15 @@ public class PlayerHomeActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    Toast.makeText(PlayerHomeActivity.this,
-                            "Inventário verificado com sucesso!",
-                            Toast.LENGTH_SHORT).show();
-
-                    // Vai para a tela do inventário após o sucesso
                     startActivity(new Intent(PlayerHomeActivity.this, InventoryActivity.class));
                 } else {
-                    Toast.makeText(PlayerHomeActivity.this,
-                            "Erro ao carregar inventário.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(PlayerHomeActivity.this, "Erro ao carregar inventário.", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse> call, Throwable t) {
-                Toast.makeText(PlayerHomeActivity.this,
-                        "Erro de rede: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(PlayerHomeActivity.this, "Erro de rede: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }

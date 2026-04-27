@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="#121212">
 
-    <!-- Conteúdo Principal -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -50,75 +49,20 @@
                     android:text="Conectando..."
                     android:textColor="#FFFFFF"
                     android:textSize="14sp" />
-
-                <TextView
-                    android:id="@+id/environmentText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="MAPA AO VIVO"
-                    android:textColor="#81C784"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <FrameLayout
-            android:id="@+id/mapContainer"
+        <!-- Fragmento do Google Maps -->
+        <fragment
+            android:id="@+id/map"
+            android:name="com.google.android.gms.maps.SupportMapFragment"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/header">
-
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:alpha="0.3"
-                android:scaleType="centerCrop"
-                android:src="@android:drawable/ic_dialog_map" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:text="[ MAPA EM TEMPO REAL ]"
-                android:textColor="#444444"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:gravity="center"
-                android:orientation="vertical">
-
-                <View
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:background="@android:color/holo_green_light" />
-
-                <TextView
-                    android:id="@+id/urlText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Você"
-                    android:textColor="#FFFFFF"
-                    android:textSize="10sp" />
-            </LinearLayout>
-        </FrameLayout>
-
-        <!-- TextView invisível para manter compatibilidade com o código Java existente -->
-        <TextView
-            android:id="@+id/sample_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintTop_toBottomOf="@+id/header" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- Menu Lateral (Drawer) -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="wrap_content"

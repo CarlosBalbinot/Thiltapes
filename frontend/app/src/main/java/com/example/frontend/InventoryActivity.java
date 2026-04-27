@@ -2,6 +2,7 @@ package com.example.frontend;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -16,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.frontend.api.ApiClient;
 import com.example.frontend.api.ApiResponse;
+import com.example.frontend.api.TokenManager;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -37,21 +39,35 @@ public class InventoryActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_inventory);
 
+        // Habilita botão de voltar na Toolbar
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("Meu Inventário");
+        }
+
         rvInventory = findViewById(R.id.rvInventory);
         rvInventory.setLayoutManager(new LinearLayoutManager(this));
         
         loadInventory();
     }
 
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            onBackPressed();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
     private void loadInventory() {
-        String playerId = getIntent().getStringExtra("playerId");
+        String playerId = TokenManager.getInstance().getUserId();
         ApiClient.getApiService().getMyInventory(playerId).enqueue(new Callback<ApiResponse>() {
             @Override
             public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     ApiResponse apiRes = response.body();
                     if (apiRes.isSuccess()) {
-                        // Converter Object data para List de Mapas (ou um modelo específico se existisse)
                         Gson gson = new Gson();
                         String json = gson.toJson(apiRes.getData());
                         List<Map<String, Object>> items = gson.fromJson(json, new TypeToken<List<Map<String, Object>>>(){}.getType());
@@ -88,11 +104,9 @@ public class InventoryActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             Map<String, Object> item = items.get(position);
-            
-            // Supondo que o backend retorna os campos: name, image_url, location_name, collected_at
             holder.tvName.setText(String.valueOf(item.getOrDefault("name", "Carta Desconhecida")));
-            holder.tvLocation.setText("📍 Local: " + item.getOrDefault("location_name", "Local desconhecido"));
-            holder.tvTime.setText("🕒 " + item.getOrDefault("collected_at", "--/--/----"));
+            holder.tvLocation.setText("📍 Local: " + item.getOrDefault("location_name", "Desconhecido"));
+            holder.tvTime.setText("🕒 " + item.getOrDefault("collected_at", "--/--"));
             
             String imageUrl = String.valueOf(item.get("image_url"));
             Glide.with(holder.itemView.getContext())
@@ -109,7 +123,6 @@ public class InventoryActivity extends AppCompatActivity {
         class ViewHolder extends RecyclerView.ViewHolder {
             ImageView ivCard;
             TextView tvName, tvLocation, tvTime;
-
             public ViewHolder(@NonNull View itemView) {
                 super(itemView);
                 ivCard = itemView.findViewById(R.id.cardImage);
